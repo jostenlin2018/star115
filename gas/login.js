@@ -13,6 +13,157 @@ function getSpreadsheet() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+// ============ 系統設定功能 ============
+
+/**
+ * 讀取 setup 工作表的系統設定
+ * @returns {Object} 系統設定物件 { status, startTime, endTime }
+ */
+function getSystemSetup() {
+  try {
+    const sheet = getSpreadsheet().getSheetByName('setup');
+    if (!sheet) {
+      return {
+        code: 500,
+        data: null,
+        message: '找不到 setup 工作表'
+      };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return {
+        code: 500,
+        data: null,
+        message: 'setup 工作表資料不足'
+      };
+    }
+
+    // 第一列為標題，第二列為設定值
+    const headers = data[0];
+    const values = data[1];
+
+    const statusIdx = headers.indexOf('status');
+    const startTimeIdx = headers.indexOf('startTime');
+    const endTimeIdx = headers.indexOf('endTime');
+
+    return {
+      code: 0,
+      data: {
+        status: statusIdx !== -1 ? String(values[statusIdx]).trim() : '撕榜前',
+        startTime: startTimeIdx !== -1 ? String(values[startTimeIdx]).trim() : '',
+        endTime: endTimeIdx !== -1 ? String(values[endTimeIdx]).trim() : ''
+      },
+      message: '成功'
+    };
+  } catch (error) {
+    Logger.log('讀取系統設定失敗: ' + error.toString());
+    return {
+      code: 500,
+      data: null,
+      message: '讀取系統設定失敗: ' + error.toString()
+    };
+  }
+}
+
+// ============ 志願儲存功能 ============
+
+/**
+ * 儲存學生志願序到「撕榜前志願表」
+ * @param {string} studentId - 學號
+ * @param {Array<string>} preferencesArray - 志願完整代碼陣列（最多 20 筆）
+ * @returns {Object} 執行結果
+ */
+function saveStudentPreferences(studentId, preferencesArray) {
+  try {
+    if (!studentId) {
+      return { code: 400, data: null, message: '學號不得為空' };
+    }
+    if (!Array.isArray(preferencesArray)) {
+      return { code: 400, data: null, message: '志願資料格式錯誤' };
+    }
+    if (preferencesArray.length > 20) {
+      return { code: 400, data: null, message: '志願數量不得超過 20 個' };
+    }
+
+    const sheet = getSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.STUDENT_PREFS);
+    if (!sheet) {
+      return { code: 500, data: null, message: '找不到「' + CONFIG.SHEET_NAMES.STUDENT_PREFS + '」工作表' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return { code: 500, data: null, message: '工作表資料不足' };
+    }
+
+    const headers = data[0];
+    const studentIdIdx = headers.indexOf('學號');
+    const vol1Idx = headers.indexOf('志願1');
+
+    if (studentIdIdx === -1 || vol1Idx === -1) {
+      return { code: 500, data: null, message: '工作表缺少「學號」或「志願1」欄位' };
+    }
+
+    // 搜尋該學生所在列
+    let targetRowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][studentIdIdx]).trim() === String(studentId).trim()) {
+        targetRowIdx = i;
+        break;
+      }
+    }
+
+    if (targetRowIdx === -1) {
+      return { code: 404, data: null, message: '找不到學號 ' + studentId + ' 的資料列' };
+    }
+
+    // 補齊 20 個欄位（不足補空字串）
+    const volValues = [];
+    for (let v = 0; v < 20; v++) {
+      volValues.push(preferencesArray[v] || '');
+    }
+
+    // 寫入志願欄位（GAS 列號從 1 開始，標題列佔第 1 列）
+    const targetRow = targetRowIdx + 1;
+    const startCol = vol1Idx + 1; // GAS 欄號從 1 開始
+    sheet.getRange(targetRow, startCol, 1, 20).setValues([volValues]);
+
+    Logger.log('儲存學生 ' + studentId + ' 志願成功，共 ' + preferencesArray.length + ' 筆');
+    return { code: 0, data: null, message: '儲存成功' };
+
+  } catch (error) {
+    Logger.log('儲存志願失敗: ' + error.toString());
+    return { code: 500, data: null, message: '儲存志願失敗: ' + error.toString() };
+  }
+}
+
+// ============ PDF 產生功能 ============
+
+/**
+ * 觸發 docBuilder.js 邏輯，產生學生志願 PDF
+ * @param {string} studentId - 學號
+ * @returns {Object} 包含 PDF 網址的結果物件
+ */
+function generatePDF(studentId) {
+  try {
+    if (!studentId) {
+      return { code: 400, data: null, message: '學號不得為空' };
+    }
+
+    const pdfUrl = fillStudentData(studentId);
+
+    Logger.log('學生 ' + studentId + ' PDF 產生成功: ' + pdfUrl);
+    return {
+      code: 0,
+      data: { pdfUrl: pdfUrl },
+      message: 'PDF 產生成功'
+    };
+  } catch (error) {
+    Logger.log('PDF 產生失敗: ' + error.toString());
+    return { code: 500, data: null, message: 'PDF 產生失敗: ' + error.toString() };
+  }
+}
+
 // ============ 使用者認證功能 ============
 
 /**
@@ -88,11 +239,42 @@ function loginUser(username, password) {
 
       scriptProperties.setProperty('sessions', JSON.stringify(sessionData));
 
+      // 讀取系統設定
+      const setupResult = getSystemSetup();
+      const setup = setupResult.code === 0 ? setupResult.data : { status: '撕榜前', startTime: '', endTime: '' };
+
+      // 讀取學生 JSON（獨立 try-catch，失敗不影響登入）
+      let studentJSON = null;
+      let studentJSONError = null;
+      try {
+        const jsonFolder = DriveApp.getFolderById(CONFIG.JSON_FOLDER_ID);
+        const jsonFileName = 'student_' + username + '.json';
+        const files = jsonFolder.getFilesByName(jsonFileName);
+        if (files.hasNext()) {
+          const jsonFile = files.next();
+          studentJSON = JSON.parse(jsonFile.getBlob().getDataAsString());
+          Logger.log('成功讀取學生 JSON: ' + jsonFileName);
+        } else {
+          studentJSONError = '找不到學生校系資料檔案（' + jsonFileName + '），請聯絡管理員';
+          Logger.log('找不到學生 JSON: ' + jsonFileName);
+        }
+      } catch (jsonError) {
+        studentJSONError = '讀取學生校系資料失敗: ' + jsonError.toString();
+        Logger.log('讀取學生 JSON 失敗: ' + jsonError.toString());
+      }
+
+      // 讀取已填志願清單
+      const preferencesList = getStudentPreferences(username);
+
       Logger.log('登入成功: ' + username);
       return {
         code: 0,
         data: {
-          token: token
+          token: token,
+          setup: setup,
+          studentJSON: studentJSON,
+          studentJSONError: studentJSONError,
+          preferencesList: preferencesList
         },
         message: '登入成功'
       };

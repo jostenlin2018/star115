@@ -3,10 +3,12 @@ import { pinia } from "@/store"
 import { defineStore } from "pinia"
 import { useTagsViewStore } from "./tags-view"
 import { useSettingsStore } from "./settings"
+import { usePreferencesStore } from "./preferences"
 import { getToken, removeToken, setToken } from "@/utils/cache/cookies"
 import { resetRouter } from "@/router"
 import { loginApi, getUserInfoApi } from "@/api/login"
 import routeSettings from "@/config/route"
+import { ElMessage } from "element-plus"
 
 export const useUserStore = defineStore("user", () => {
   const token = ref(getToken() || "")
@@ -19,17 +21,26 @@ export const useUserStore = defineStore("user", () => {
   const settingsStore = useSettingsStore()
 
   /** 登录 */
-  const login = async ({ username, password /*, code*/ }) => {
-    const response = await loginApi({ username, password /*, code*/ })
+  const login = async ({ username: u, password /*, code*/ }) => {
+    const response = await loginApi({ username: u, password /*, code*/ })
     const { data } = response
     setToken(data.token)
     token.value = data.token
+
+    // 初始化志願相關資料（setup / studentJSON / preferencesList）
+    const preferencesStore = usePreferencesStore()
+    preferencesStore.initFromLoginPayload(data)
+
+    // 若學生 JSON 讀取失敗，顯示友善提示（不阻斷登入流程）
+    if (data.studentJSONError) {
+      ElMessage.warning(data.studentJSONError)
+    }
   }
   /** 获取用户详情 */
   const getInfo = async () => {
     const response = await getUserInfoApi()
     const { data } = response
-    username.value = data.username
+    username.value = data.username // username 即學號，供 preferences store 跨 Store 存取
     displayName.value = data.displayName
     nationalId.value = data.nationalId
     // 验证返回的 roles 是否为一个非空数组，否则塞入一个没有任何作用的默认角色，防止路由守卫逻辑进入无限循环

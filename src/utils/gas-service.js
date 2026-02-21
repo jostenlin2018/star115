@@ -145,3 +145,30 @@ export function gasGetUserInfo(token) {
 export function gasLogout(token) {
   return callGasFunction("logoutUser", token)
 }
+
+/**
+ * 讀取系統設定（供非登入狀態查詢）
+ * @returns {Promise}
+ */
+export function gasGetSystemSetup() {
+  return callGasFunction("getSystemSetup")
+}
+
+/**
+ * 儲存學生志願序
+ * @param {string} studentId - 學號
+ * @param {Array<string>} preferencesArray - 志願完整代碼陣列（最多 20 筆）
+ * @returns {Promise}
+ */
+export function gasSaveStudentPreferences(studentId, preferencesArray) {
+  return callGasFunction("saveStudentPreferences", studentId, preferencesArray)
+}
+
+/**
+ * 產生學生志願 PDF
+ * @param {string} studentId - 學號
+ * @returns {Promise} 包含 pdfUrl 的結果
+ */
+export function gasGeneratePDF(studentId) {
+  return callGasFunction("generatePDF", studentId)
+}

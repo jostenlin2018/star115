@@ -47,7 +47,7 @@ export const constantRoutes = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/success",
+    redirect: "/selected-group",
     children: [
       {
         path: "success",
@@ -56,6 +56,22 @@ export const constantRoutes = [
         meta: {
           title: "登入成功",
           hidden: true
+        }
+      },
+      {
+        path: "selected-group",
+        component: () => import("@/views/selected-group/index.vue"),
+        name: "SelectedGroup",
+        meta: {
+          title: "我的志願清單"
+        }
+      },
+      {
+        path: "add-group",
+        component: () => import("@/views/add-group/index.vue"),
+        name: "AddGroup",
+        meta: {
+          title: "搜尋並新增志願"
         }
       }
     ]
