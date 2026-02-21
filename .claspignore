@@ -1,0 +1,36 @@
+# ESLint 配置檔案
+.eslintrc.js
+.eslintrc.json
+.eslintrc.yml
+.eslintrc.yaml
+
+# Node.js 相關檔案
+node_modules/
+package.json
+package-lock.json
+pnpm-lock.yaml
+
+# 開發工具檔案
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# 建置檔案
+dist/
+build/
+
+# 測試檔案
+test/
+tests/
+*.test.js
+*.spec.js
+
+# 文檔檔案
+README.md
+*.md
+
+# 其他配置檔案
+vite.config.js
+prettier.config.js
+unocss.config.js

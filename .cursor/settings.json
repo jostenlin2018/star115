@@ -1,0 +1,16 @@
+{
+  "cursor.general.enableFileWatcher": true,
+  "cursor.general.indexIgnorePatterns": [],
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.git/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true
+  },
+  "files.exclude": {},
+  "cursor.chat.includeWorkspaceFiles": true
+}

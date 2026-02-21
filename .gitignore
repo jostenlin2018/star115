@@ -1,0 +1,40 @@
+# Git 会忽略的文件
+
+.DS_Store
+node_modules
+dist
+dist-ssr
+.eslintcache
+
+# Local env files
+*.local
+
+# 學習和測試用途：讓 .env 檔案被 Git 追蹤，確保 Cursor 可以看到
+# 注意：正式專案中應該忽略 .env 檔案以保護敏感資訊
+# .env
+!.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/*.code-snippets
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Use the PNPM
+package-lock.json
+yarn.lock

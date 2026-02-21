@@ -1,0 +1,11 @@
+# 讓 Cursor 完全可以看到 .env 檔案
+# 這個檔案故意留空，確保 .env 不被忽略
+
+# 如果需要忽略其他檔案，可以加入：
+# node_modules/
+# dist/
+# *.log
+
+# 明確不忽略 .env 檔案（確保 Cursor 可以看到）
+!.env
+!.env.*
