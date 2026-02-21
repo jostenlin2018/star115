@@ -18,7 +18,7 @@
         </div>
       </template>
 
-      <!-- 搜尋欄（被動觸發：Enter 或點擊搜尋按鈕） -->
+      <!-- 搜尋欄（手機端透過 CSS 改為垂直排列） -->
       <div class="search-bar">
         <el-input
           v-model="inputKeyword"
@@ -33,8 +33,11 @@
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
-        <el-button type="primary" :disabled="!open || !inputKeyword.trim()" @click="handleSearch"> 搜尋 </el-button>
+        <el-button class="search-btn" type="primary" :disabled="!open || !inputKeyword.trim()" @click="handleSearch">
+          搜尋
+        </el-button>
       </div>
+
       <div class="search-hint">
         <el-icon class="hint-icon"><InfoFilled /></el-icon>
         多關鍵詞請用<strong>半形空白</strong>分隔，例如：<code>台大 電機</code>
@@ -48,40 +51,66 @@
         >
       </div>
 
-      <!-- 搜尋結果列表 -->
-      <el-table
-        v-if="confirmedKeyword"
-        :data="pagedResults"
-        stripe
-        border
-        empty-text="沒有符合條件的校系"
-        class="result-table"
-      >
-        <el-table-column label="學校" prop="學校名稱" min-width="140" />
-        <el-table-column label="學群" prop="學群名稱" min-width="120" />
-        <el-table-column label="學系" prop="學系名稱" min-width="160" />
-        <el-table-column label="代碼" prop="完整代碼" width="110" align="center" />
-        <el-table-column label="操作" width="110" align="center">
-          <template #default="{ row }">
-            <el-button
-              size="small"
-              :type="getButtonType(row)"
-              :disabled="!open || isSelected(row)"
-              @click="handleAdd(row)"
-            >
-              {{ getButtonLabel(row) }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <!-- 電腦端：Table（CSS 在 <=768px 隱藏） -->
+      <div v-if="confirmedKeyword" class="table-wrapper">
+        <el-table :data="pagedResults" stripe border empty-text="沒有符合條件的校系" class="result-table">
+          <el-table-column label="學校" prop="學校名稱" min-width="140" />
+          <el-table-column label="學群" prop="學群名稱" min-width="120" />
+          <el-table-column label="學系" prop="學系名稱" min-width="160" />
+          <el-table-column label="代碼" prop="完整代碼" width="110" align="center" />
+          <el-table-column label="操作" width="110" align="center">
+            <template #default="{ row }">
+              <el-button
+                size="small"
+                :type="getButtonType(row)"
+                :disabled="!open || isSelected(row)"
+                @click="handleAdd(row)"
+              >
+                {{ getButtonLabel(row) }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
-      <!-- 分頁導航 -->
+      <!-- 手機端：卡片清單（CSS 在 >768px 隱藏） -->
+      <div v-if="confirmedKeyword" class="mobile-card-list">
+        <el-empty v-if="pagedResults.length === 0" description="沒有符合條件的校系" />
+        <div v-for="dept in pagedResults" :key="dept.完整代碼" class="result-card">
+          <!-- 頂部：學校 + 學系 -->
+          <div class="result-card__header">
+            <span class="result-card__school">{{ dept.學校名稱 }}</span>
+            <span class="result-card__dept">{{ dept.學系名稱 }}</span>
+          </div>
+
+          <!-- 中段：學群 + 代碼 -->
+          <div class="result-card__meta">
+            <el-tag size="small" type="info">{{ dept.學群名稱 }}</el-tag>
+            <span class="result-card__code">{{ dept.完整代碼 }}</span>
+          </div>
+
+          <!-- 底部：加入按鈕（滿版） -->
+          <div class="result-card__action">
+            <el-button
+              :type="getButtonType(dept)"
+              :disabled="!open || isSelected(dept)"
+              style="width: 100%"
+              @click="handleAdd(dept)"
+            >
+              {{ getButtonLabel(dept) }}
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分頁導航（isMobile 控制 layout 與 small 屬性） -->
       <div v-if="confirmedKeyword && filteredAndSorted.length > pageSize" class="pagination-wrap">
         <el-pagination
           v-model:current-page="currentPage"
           :page-size="pageSize"
           :total="filteredAndSorted.length"
-          layout="prev, pager, next, jumper, total"
+          :layout="isMobile ? 'prev, pager, next' : 'prev, pager, next, jumper, total'"
+          :small="isMobile"
           background
         />
       </div>
@@ -93,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { Search, InfoFilled } from "@element-plus/icons-vue"
@@ -103,6 +132,22 @@ const router = useRouter()
 const preferencesStore = usePreferencesStore()
 
 const open = computed(() => preferencesStore.isOpen())
+
+// ============ RWD：使用 matchMedia（與 CSS 媒體查詢相同引擎，更可靠） ============
+// 僅用於 el-pagination 的 :layout 與 :small 動態 prop
+const isMobile = ref(false)
+let mq = null
+const onMediaChange = (e) => {
+  isMobile.value = e.matches
+}
+onMounted(() => {
+  mq = window.matchMedia("(max-width: 768px)")
+  isMobile.value = mq.matches
+  mq.addEventListener("change", onMediaChange)
+})
+onUnmounted(() => {
+  mq?.removeEventListener("change", onMediaChange)
+})
 
 // ============ 搜尋狀態 ============
 /** 搜尋框 v-model，不直接觸發過濾計算 */
@@ -241,6 +286,7 @@ async function handleAdd(dept) {
   }
 }
 
+/* ====== 搜尋欄（桌面水平，手機垂直） ====== */
 .search-bar {
   display: flex;
   gap: 8px;
@@ -280,8 +326,21 @@ async function handleAdd(dept) {
   margin-bottom: 12px;
 }
 
+/* ====== 桌面版 table（>768px 顯示，<=768px 隱藏） ====== */
+.table-wrapper {
+  display: block;
+  margin-bottom: 16px;
+}
+
 .result-table {
   width: 100%;
+}
+
+/* ====== 手機版卡片清單（>768px 隱藏，<=768px 顯示） ====== */
+.mobile-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -289,5 +348,83 @@ async function handleAdd(dept) {
   display: flex;
   justify-content: center;
   padding-top: 8px;
+}
+
+/* ====== 手機版搜尋結果卡片樣式 ====== */
+.result-card {
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--el-bg-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  &__school {
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+    font-weight: 500;
+  }
+
+  &__dept {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__code {
+    font-size: 12px;
+    color: var(--el-text-color-placeholder);
+  }
+
+  &__action {
+    padding-top: 10px;
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+}
+
+/* ====== RWD：手機端覆蓋 ====== */
+@media (max-width: 768px) {
+  .add-group-page {
+    padding: 12px;
+  }
+
+  /* 搜尋欄改為垂直排列，按鈕與輸入框滿版 */
+  .search-bar {
+    flex-direction: column;
+
+    .search-input {
+      width: 100%;
+    }
+
+    .search-btn {
+      width: 100%;
+    }
+  }
+
+  /* 隱藏桌面 table，顯示手機卡片 */
+  .table-wrapper {
+    display: none;
+  }
+
+  .mobile-card-list {
+    display: flex;
+  }
+
+  .pagination-wrap {
+    padding-top: 4px;
+  }
 }
 </style>

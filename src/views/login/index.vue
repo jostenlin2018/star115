@@ -1,73 +1,24 @@
 <script setup>
-import { reactive, ref, computed, onMounted, onBeforeUnmount } from "vue"
+import { reactive, ref } from "vue"
 import { useRouter } from "vue-router"
 import { useUserStore } from "@/store/modules/user"
 import { User, Lock } from "@element-plus/icons-vue"
 
 const router = useRouter()
 
-/** 登录表单元素的引用 */
 const loginFormRef = ref(null)
-
-/** 登录按钮 Loading */
 const loading = ref(false)
 
-/** 登录表单数据 */
 const loginFormData = reactive({
   username: "",
   password: ""
 })
 
-/** 登录表单校验规则 */
 const loginFormRules = {
   username: [{ required: true, message: "請輸入學號", trigger: "blur" }],
   password: [{ required: true, message: "請輸入身分證字號", trigger: "blur" }]
 }
 
-/** 手機直向媒體偵測，必要時以行內樣式強制覆寫 */
-const isMobilePortrait = ref(false)
-const updateMobilePortrait = () => {
-  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-    isMobilePortrait.value = window.matchMedia("(max-width: 575px) and (orientation: portrait)").matches
-  }
-}
-
-onMounted(() => {
-  updateMobilePortrait()
-  window.addEventListener("resize", updateMobilePortrait)
-  window.addEventListener("orientationchange", updateMobilePortrait)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", updateMobilePortrait)
-  window.removeEventListener("orientationchange", updateMobilePortrait)
-})
-
-const mobileContainerStyle = computed(() => {
-  if (!isMobilePortrait.value) return {}
-  return {
-    position: "relative",
-    padding: "0",
-    margin: "0",
-    background: "#e6e6fa"
-  }
-})
-
-const mobileCardStyle = computed(() => {
-  if (!isMobilePortrait.value) return {}
-  return {
-    position: "absolute",
-    top: "10px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "90%",
-    maxWidth: "90%",
-    minWidth: "90%",
-    margin: "0"
-  }
-})
-
-/** 登录逻辑 */
 const handleLogin = () => {
   loginFormRef.value?.validate((valid) => {
     if (valid) {
@@ -89,8 +40,8 @@ const handleLogin = () => {
 </script>
 
 <template>
-  <div class="login-container" :style="mobileContainerStyle">
-    <el-card class="login-card" shadow="hover" :style="mobileCardStyle">
+  <div class="login-container">
+    <el-card class="login-card" shadow="hover">
       <template #header>
         <div class="card-header">
           <img src="@/assets/layouts/logo-text-2.png" alt="Logo" class="logo" />
@@ -142,6 +93,7 @@ const handleLogin = () => {
 </template>
 
 <style lang="scss" scoped>
+/* ====== 基礎樣式（桌面） ====== */
 .login-container {
   display: flex;
   flex-direction: column;
@@ -155,7 +107,17 @@ const handleLogin = () => {
 
 .login-card {
   width: 100%;
-  max-width: 675px;
+  max-width: 500px;
+  border-radius: 12px;
+
+  :deep(.el-card__header) {
+    padding: 30px 30px 20px;
+    border-bottom: 1px solid var(--el-border-color-light);
+  }
+
+  :deep(.el-card__body) {
+    padding: 30px;
+  }
 
   .card-header {
     text-align: center;
@@ -174,80 +136,54 @@ const handleLogin = () => {
     }
   }
 
-  :deep(.el-card__header) {
-    padding: 30px 30px 20px;
-    border-bottom: 1px solid var(--el-border-color-light);
-  }
-
-  :deep(.el-card__body) {
-    padding: 30px;
-  }
-
   .login-tips {
     margin-top: 10px;
   }
 }
 
-/* 平板 (768px - 1024px) */
-@media screen and (min-width: 768px) and (max-width: 1024px) {
-  .login-card {
-    max-width: 630px;
-  }
-}
-
-/* 手機橫向 (< 768px landscape) */
+/* ====== 手機橫向（<= 767px landscape） ====== */
 @media screen and (max-width: 767px) and (orientation: landscape) {
   .login-container {
-    padding: 15px;
+    padding: 12px;
+    justify-content: flex-start;
   }
 
   .login-card {
-    max-width: 600px;
+    max-width: 520px;
 
     :deep(.el-card__header) {
-      padding: 20px 25px 15px;
+      padding: 14px 24px 12px;
     }
 
     :deep(.el-card__body) {
-      padding: 20px 25px;
+      padding: 16px 24px;
     }
 
     .card-header {
       .logo {
-        max-height: 50px;
+        max-height: 38px;
       }
 
       h2 {
-        font-size: 20px;
+        font-size: 18px;
+        margin-top: 4px;
       }
     }
   }
 }
 
-/* 手機直向 (< 576px portrait) */
+/* ====== 手機直向（<= 575px portrait） ====== */
 @media screen and (max-width: 575px) and (orientation: portrait) {
   .login-container {
-    position: relative !important;
-    display: block !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #e6e6fa !important;
+    padding: 24px 16px;
   }
 
   .login-card {
-    position: absolute !important;
-    top: 10px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 90% !important;
-    max-width: 90% !important;
-    min-width: 90% !important;
-    margin: 0 !important;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 100%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 
     :deep(.el-card__header) {
-      padding: 25px 20px 20px;
+      padding: 24px 20px 18px;
     }
 
     :deep(.el-card__body) {
@@ -266,24 +202,24 @@ const handleLogin = () => {
   }
 }
 
-/* 極小螢幕 (< 360px) */
+/* ====== 極小螢幕（<= 359px） ====== */
 @media screen and (max-width: 359px) {
-  .login-card {
-    width: 94% !important;
-    max-width: 94% !important;
-    min-width: 86% !important;
+  .login-container {
+    padding: 16px 12px;
+  }
 
+  .login-card {
     :deep(.el-card__header) {
-      padding: 20px 15px 15px;
+      padding: 20px 15px 14px;
     }
 
     :deep(.el-card__body) {
-      padding: 15px;
+      padding: 16px 14px;
     }
 
     .card-header {
       .logo {
-        max-height: 45px;
+        max-height: 44px;
       }
 
       h2 {

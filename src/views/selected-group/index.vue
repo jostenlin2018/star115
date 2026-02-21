@@ -22,38 +22,85 @@
         </div>
       </template>
 
-      <!-- 志願清單 -->
-      <el-table :data="detailedPreferencesList" stripe border empty-text="尚未選填任何志願" class="pref-table">
-        <el-table-column label="序號" type="index" width="60" align="center" />
-        <el-table-column label="學校" prop="學校名稱" min-width="140" />
-        <el-table-column label="學群" prop="學群名稱" min-width="120" />
-        <el-table-column label="學系" prop="學系名稱" min-width="160" />
-        <el-table-column label="完整代碼" prop="完整代碼" width="110" align="center" />
-        <el-table-column v-if="open" label="操作" width="160" align="center">
-          <template #default="{ $index }">
-            <div class="action-btns">
-              <el-button size="small" :disabled="$index === 0" @click="preferencesStore.moveUp($index)"> ↑ </el-button>
-              <el-button
-                size="small"
-                :disabled="$index === detailedPreferencesList.length - 1"
-                @click="preferencesStore.moveDown($index)"
-              >
-                ↓
-              </el-button>
-              <el-button size="small" type="danger" @click="preferencesStore.removePreference($index)">
-                移除
-              </el-button>
+      <!-- 電腦端：Table（CSS 在 <=768px 隱藏） -->
+      <div class="table-wrapper">
+        <el-table :data="detailedPreferencesList" stripe border empty-text="尚未選填任何志願" class="pref-table">
+          <el-table-column label="序號" type="index" width="60" align="center" />
+          <el-table-column label="學校" prop="學校名稱" min-width="140" />
+          <el-table-column label="學群" prop="學群名稱" min-width="120" />
+          <el-table-column label="學系" prop="學系名稱" min-width="160" />
+          <el-table-column label="完整代碼" prop="完整代碼" width="110" align="center" />
+          <el-table-column v-if="open" label="操作" width="160" align="center">
+            <template #default="{ $index }">
+              <div class="action-btns">
+                <el-button size="small" :disabled="$index === 0" @click="preferencesStore.moveUp($index)">
+                  ↑
+                </el-button>
+                <el-button
+                  size="small"
+                  :disabled="$index === detailedPreferencesList.length - 1"
+                  @click="preferencesStore.moveDown($index)"
+                >
+                  ↓
+                </el-button>
+                <el-button size="small" type="danger" @click="preferencesStore.removePreference($index)">
+                  移除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- 手機端：卡片清單（CSS 在 >768px 隱藏） -->
+      <div class="mobile-card-list">
+        <el-empty v-if="detailedPreferencesList.length === 0" description="尚未選填任何志願" />
+        <div v-for="(dept, index) in detailedPreferencesList" :key="dept.完整代碼" class="pref-card">
+          <!-- 頂部：志願序 + 學校名稱 -->
+          <div class="pref-card__header">
+            <span class="pref-card__rank">志願 {{ index + 1 }}</span>
+            <span class="pref-card__school">{{ dept.學校名稱 }}</span>
+          </div>
+
+          <!-- 中段：學群 + 學系 -->
+          <div class="pref-card__body">
+            <div class="pref-card__meta">
+              <el-tag size="small" type="info" class="pref-card__group-tag">{{ dept.學群名稱 }}</el-tag>
+              <span class="pref-card__dept">{{ dept.學系名稱 }}</span>
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
+            <div class="pref-card__code">代碼：{{ dept.完整代碼 }}</div>
+          </div>
 
-      <!-- 底部按鈕列 -->
+          <!-- 底部：操作按鈕（僅開放期間顯示） -->
+          <div v-if="open" class="pref-card__actions">
+            <el-button size="default" :disabled="index === 0" @click="preferencesStore.moveUp(index)">
+              <el-icon><ArrowUp /></el-icon>
+              上移
+            </el-button>
+            <el-button
+              size="default"
+              :disabled="index === detailedPreferencesList.length - 1"
+              @click="preferencesStore.moveDown(index)"
+            >
+              <el-icon><ArrowDown /></el-icon>
+              下移
+            </el-button>
+            <el-button size="default" type="danger" @click="preferencesStore.removePreference(index)">
+              <el-icon><Delete /></el-icon>
+              移除
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 統一底部按鈕列（電腦端靠右，手機端透過 CSS 變為 sticky） -->
       <div class="footer-actions">
-        <el-button @click="router.push('/add-group')">前往新增志願</el-button>
-
+        <el-button @click="router.push('/add-group')">
+          <el-icon><Plus /></el-icon>
+          前往新增志願
+        </el-button>
         <template v-if="open">
-          <el-button type="primary" :loading="isSaving" @click="handleSave"> 儲存志願 </el-button>
+          <el-button type="primary" :loading="isSaving" @click="handleSave">儲存志願</el-button>
           <el-button type="success" :disabled="!pdfReady" :loading="isPdfGenerating" @click="handleGeneratePDF">
             匯出 PDF
           </el-button>
@@ -74,6 +121,7 @@
 import { ref, computed } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage } from "element-plus"
+import { ArrowUp, ArrowDown, Delete, Plus } from "@element-plus/icons-vue"
 import { usePreferencesStore } from "@/store/modules/preferences"
 
 const router = useRouter()
@@ -137,9 +185,14 @@ async function handleGeneratePDF() {
   }
 }
 
+/* ====== 桌面版 table（>768px 顯示，<=768px 隱藏） ====== */
+.table-wrapper {
+  display: block;
+  margin-bottom: 20px;
+}
+
 .pref-table {
   width: 100%;
-  margin-bottom: 20px;
 }
 
 .action-btns {
@@ -148,10 +201,134 @@ async function handleGeneratePDF() {
   justify-content: center;
 }
 
+/* ====== 手機版卡片清單（>768px 隱藏，<=768px 顯示） ====== */
+.mobile-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ====== 統一底部按鈕列 ====== */
 .footer-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
   padding-top: 4px;
+}
+
+/* ====== 手機版卡片樣式 ====== */
+.pref-card {
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--el-bg-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  &__rank {
+    background: var(--el-color-primary-light-8);
+    color: var(--el-color-primary);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  &__school {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__body {
+    margin-bottom: 12px;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  &__group-tag {
+    flex-shrink: 0;
+  }
+
+  &__dept {
+    font-size: 15px;
+    color: var(--el-text-color-primary);
+    font-weight: 500;
+  }
+
+  &__code {
+    font-size: 12px;
+    color: var(--el-text-color-placeholder);
+    margin-top: 2px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid var(--el-border-color-lighter);
+
+    .el-button {
+      flex: 1;
+    }
+  }
+}
+
+/* ====== RWD：手機端覆蓋 ====== */
+@media (max-width: 768px) {
+  .selected-group-page {
+    padding: 12px;
+    /* 為底部 sticky bar 騰出空間，避免內容被遮住 */
+    padding-bottom: 90px;
+  }
+
+  /* 隱藏桌面 table，顯示手機卡片 */
+  .table-wrapper {
+    display: none;
+  }
+
+  .mobile-card-list {
+    display: flex;
+  }
+
+  /* 將底部按鈕列轉為 Sticky Action Bar */
+  .footer-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    justify-content: center;
+    padding: 12px 16px;
+    /* iOS Safe Area 支援 */
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--el-bg-color);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
+    border-top: 1px solid var(--el-border-color-lighter);
+
+    .el-button {
+      flex: 1;
+      max-width: 140px;
+    }
+  }
 }
 </style>
