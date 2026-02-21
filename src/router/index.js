@@ -47,18 +47,8 @@ export const constantRoutes = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/dashboard",
+    redirect: "/success",
     children: [
-      {
-        path: "dashboard",
-        component: () => import("@/views/dashboard/index.vue"),
-        name: "Dashboard",
-        meta: {
-          title: "首頁",
-          svgIcon: "dashboard",
-          affix: true
-        }
-      },
       {
         path: "success",
         component: () => import("@/views/success/index.vue"),

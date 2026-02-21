@@ -94,7 +94,7 @@ const handleLogin = () => {
       <template #header>
         <div class="card-header">
           <img src="@/assets/layouts/logo-text-2.png" alt="Logo" class="logo" />
-          <h2>系統登入</h2>
+          <h2>繁星推薦志願選填</h2>
         </div>
       </template>
 

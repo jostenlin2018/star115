@@ -1,5 +1,5 @@
 /** 免登录白名单（匹配路由 path） */
-const whiteListByPath = ["/login", "/dashboard"]
+const whiteListByPath = ["/login"]
 
 /** 免登录白名单（匹配路由 name） */
 const whiteListByName = []
