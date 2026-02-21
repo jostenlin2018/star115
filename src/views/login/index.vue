@@ -75,7 +75,7 @@ const handleLogin = () => {
       useUserStore()
         .login(loginFormData)
         .then(() => {
-          router.push({ path: "/accounts/index" })
+          router.push({ path: "/success" })
         })
         .catch(() => {
           loginFormData.password = ""

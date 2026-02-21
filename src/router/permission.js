@@ -25,9 +25,9 @@ router.beforeEach(async (to, _from, next) => {
     return next("/login")
   }
 
-  // 如果已经登录，并准备进入 Login 页面，则重定向到 Accounts 頁面
+  // 如果已经登录，并准备进入 Login 页面，则重定向到成功頁面
   if (to.path === "/login") {
-    return next({ path: "/accounts/index" })
+    return next({ path: "/success" })
   }
 
   // 如果用户已经获得其权限角色

@@ -1,4 +1,4 @@
-# 顯示腳本開始運作的標題訊息
+﻿# 顯示腳本開始運作的標題訊息
 Write-Host "`n### GAS: Build for Google Apps Script ###`n" -ForegroundColor Green
 
 # --- 變數定義 ---

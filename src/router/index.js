@@ -47,7 +47,7 @@ export const constantRoutes = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/accounts/index",
+    redirect: "/dashboard",
     children: [
       {
         path: "dashboard",
@@ -58,53 +58,14 @@ export const constantRoutes = [
           svgIcon: "dashboard",
           affix: true
         }
-      }
-    ]
-  },
-  {
-    path: "/fruits",
-    component: Layouts,
-    redirect: "/fruits/index",
-    children: [
+      },
       {
-        path: "index",
-        component: () => import("@/views/fruits/index.vue"),
-        name: "Fruits",
+        path: "success",
+        component: () => import("@/views/success/index.vue"),
+        name: "Success",
         meta: {
-          title: "水果管理",
-          svgIcon: "component"
-        }
-      }
-    ]
-  },
-  {
-    path: "/single-fruit",
-    component: Layouts,
-    redirect: "/single-fruit/index",
-    children: [
-      {
-        path: "index",
-        component: () => import("@/views/single_fruit/index.vue"),
-        name: "SingleFruit",
-        meta: {
-          title: "單一水果編輯",
-          svgIcon: "component"
-        }
-      }
-    ]
-  },
-  {
-    path: "/accounts",
-    component: Layouts,
-    redirect: "/accounts/index",
-    children: [
-      {
-        path: "index",
-        component: () => import("@/views/accounts/index.vue"),
-        name: "Accounts",
-        meta: {
-          title: "學生帳戶資料",
-          svgIcon: "component"
+          title: "登入成功",
+          hidden: true
         }
       }
     ]

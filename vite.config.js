@@ -106,10 +106,5 @@ export default ({ mode }) => {
       /** UnoCSS */
       UnoCSS()
     ],
-    /** Vitest 单元测试配置：https://cn.vitest.dev/config */
-    test: {
-      include: ["tests/**/*.test.js"],
-      environment: "jsdom"
-    }
   }
 }
