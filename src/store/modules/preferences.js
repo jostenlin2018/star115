@@ -114,8 +114,10 @@ export const usePreferencesStore = defineStore("preferences", () => {
     if (!startTime || !endTime) return true // 未設定時間區間，視為開放
 
     const now = new Date()
-    const start = new Date(startTime.replace(/\//g, "-"))
-    const end = new Date(endTime.replace(/\//g, "-"))
+    // Safari 無法解析 "YYYY-MM-DD HH:mm:ss"（需要 T 分隔），
+    // 但所有瀏覽器都支援 "YYYY/MM/DD HH:mm:ss"，因此統一轉為斜線格式。
+    const start = new Date(startTime.replace(/-/g, "/"))
+    const end = new Date(endTime.replace(/-/g, "/"))
 
     return now >= start && now <= end
   }

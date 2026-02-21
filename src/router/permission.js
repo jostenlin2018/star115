@@ -1,6 +1,7 @@
 import { router } from "@/router"
 import { useUserStoreHook } from "@/store/modules/user"
 import { usePermissionStoreHook } from "@/store/modules/permission"
+import { usePreferencesStoreHook } from "@/store/modules/preferences"
 import { ElMessage } from "element-plus"
 import { setRouteChange } from "@/hooks/useRouteListener"
 import { useTitle } from "@/hooks/useTitle"
@@ -44,6 +45,17 @@ router.beforeEach(async (to, _from, next) => {
     routeSettings.dynamic ? permissionStore.setRoutes(roles) : permissionStore.setAllRoutes()
     // 将 "有访问权限的动态路由" 添加到 Router 中
     permissionStore.addRoutes.forEach((route) => router.addRoute(route))
+
+    // Pinia 為記憶體狀態，F5 重整後 preferencesStore 會被清空。
+    // 若 studentJSON 不存在，代表本次是重整後的首次路由觸發，
+    // 此時無法在不重新登入的情況下還原校系資料，強制導回登入頁。
+    const preferencesStore = usePreferencesStoreHook()
+    if (!preferencesStore.studentJSON) {
+      userStore.resetToken()
+      ElMessage.warning("登入狀態已過期，請重新登入")
+      return next("/login")
+    }
+
     // 设置 replace: true, 因此导航将不会留下历史记录
     next({ ...to, replace: true })
   } catch (error) {

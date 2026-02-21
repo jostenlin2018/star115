@@ -22,7 +22,7 @@
       <div class="search-bar">
         <el-input
           v-model="inputKeyword"
-          placeholder="輸入關鍵字（多個關鍵字以空白分隔），按 Enter 或點擊搜尋"
+          placeholder="輸入關鍵字，按 Enter 或點擊搜尋"
           clearable
           :disabled="!open"
           class="search-input"
@@ -34,6 +34,10 @@
           </template>
         </el-input>
         <el-button type="primary" :disabled="!open || !inputKeyword.trim()" @click="handleSearch"> 搜尋 </el-button>
+      </div>
+      <div class="search-hint">
+        <el-icon class="hint-icon"><InfoFilled /></el-icon>
+        多關鍵詞請用<strong>半形空白</strong>分隔，例如：<code>台大 電機</code>
       </div>
 
       <!-- 搜尋狀態提示 -->
@@ -92,7 +96,7 @@
 import { ref, computed, watch } from "vue"
 import { useRouter } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
-import { Search } from "@element-plus/icons-vue"
+import { Search, InfoFilled } from "@element-plus/icons-vue"
 import { usePreferencesStore } from "@/store/modules/preferences"
 
 const router = useRouter()
@@ -240,10 +244,33 @@ async function handleAdd(dept) {
 .search-bar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 
   .search-input {
     flex: 1;
+  }
+}
+
+.search-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+
+  .hint-icon {
+    font-size: 14px;
+    color: var(--el-color-info);
+    flex-shrink: 0;
+  }
+
+  code {
+    background: var(--el-fill-color);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-family: monospace;
+    color: var(--el-text-color-primary);
   }
 }
 
