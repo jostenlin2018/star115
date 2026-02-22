@@ -310,14 +310,34 @@ function loginUser(username, password) {
       // 儲存 session
       const scriptProperties = PropertiesService.getScriptProperties();
       const sessions = scriptProperties.getProperty('sessions');
-      const sessionData = sessions ? JSON.parse(sessions) : {};
+      let sessionData = sessions ? JSON.parse(sessions) : {};
+
+      // 清理超過 24 小時的過期 sessions
+      const now = new Date().getTime();
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      const validSessionData = {};
+      let cleanedCount = 0;
+      
+      for (const [key, session] of Object.entries(sessionData)) {
+        if (session.loginTime && (now - session.loginTime < ONE_DAY_MS)) {
+          validSessionData[key] = session;
+        } else {
+          cleanedCount++;
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        Logger.log('已清理 ' + cleanedCount + ' 個過期 session');
+      }
+      
+      sessionData = validSessionData;
 
       sessionData[token] = {
         username: username,
         displayName: users[username].displayName,
         roles: users[username].roles,
         nationalId: users[username].password,
-        loginTime: new Date().getTime()
+        loginTime: now
       };
 
       scriptProperties.setProperty('sessions', JSON.stringify(sessionData));
@@ -406,13 +426,52 @@ function getUserInfo(token) {
     const sessionData = JSON.parse(sessions);
 
     if (sessionData[token]) {
+      const username = sessionData[token].username;
+
+      // 讀取系統設定
+      const setupResult = getSystemSetup();
+      const setup = setupResult.code === 0 ? setupResult.data : { status: '撕榜前', startTime: '', endTime: '' };
+
+      // 讀取學生 JSON（獨立 try-catch，失敗不影響取得資訊）
+      let studentJSON = null;
+      let studentJSONError = null;
+      try {
+        const jsonFolder = DriveApp.getFolderById(CONFIG.JSON_FOLDER_ID);
+        const jsonFileName = 'student_' + username + '.json';
+        const files = jsonFolder.getFilesByName(jsonFileName);
+        if (files.hasNext()) {
+          const jsonFile = files.next();
+          studentJSON = JSON.parse(jsonFile.getBlob().getDataAsString());
+          Logger.log('成功讀取學生 JSON: ' + jsonFileName);
+        } else {
+          studentJSONError = '找不到學生校系資料檔案（' + jsonFileName + '），請聯絡管理員';
+          Logger.log('找不到學生 JSON: ' + jsonFileName);
+        }
+      } catch (jsonError) {
+        studentJSONError = '讀取學生校系資料失敗: ' + jsonError.toString();
+        Logger.log('讀取學生 JSON 失敗: ' + jsonError.toString());
+      }
+
+      // 讀取撕榜前已填志願清單
+      const preferencesList = getStudentPreferences(username);
+
+      // 讀取撕榜後相關資料（撕榜結果、中文名稱、已選志願）
+      const postRankingData = getStudentPostRankingData(username);
+
       return {
         code: 0,
         data: {
           username: sessionData[token].username,
           displayName: sessionData[token].displayName,
           roles: sessionData[token].roles,
-          nationalId: sessionData[token].nationalId
+          nationalId: sessionData[token].nationalId,
+          setup: setup,
+          studentJSON: studentJSON,
+          studentJSONError: studentJSONError,
+          preferencesList: preferencesList,
+          rankingResult:   postRankingData.rankingResult,
+          rankingName:     postRankingData.rankingName,
+          postRankingList: postRankingData.postRankingList
         },
         message: '成功'
       };

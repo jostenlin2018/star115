@@ -10,14 +10,14 @@ const isGasEnvironment = () => {
 
 export const getToken = () => {
   if (isGasEnvironment()) {
-    return localStorage.getItem(CacheKey.TOKEN)
+    return sessionStorage.getItem(CacheKey.TOKEN)
   }
   return Cookies.get(CacheKey.TOKEN)
 }
 
 export const setToken = (token) => {
   if (isGasEnvironment()) {
-    localStorage.setItem(CacheKey.TOKEN, token)
+    sessionStorage.setItem(CacheKey.TOKEN, token)
     return
   }
   Cookies.set(CacheKey.TOKEN, token)
@@ -25,7 +25,7 @@ export const setToken = (token) => {
 
 export const removeToken = () => {
   if (isGasEnvironment()) {
-    localStorage.removeItem(CacheKey.TOKEN)
+    sessionStorage.removeItem(CacheKey.TOKEN)
     return
   }
   Cookies.remove(CacheKey.TOKEN)

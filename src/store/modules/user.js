@@ -45,6 +45,15 @@ export const useUserStore = defineStore("user", () => {
     nationalId.value = data.nationalId
     // 验证返回的 roles 是否为一个非空数组，否则塞入一个没有任何作用的默认角色，防止路由守卫逻辑进入无限循环
     roles.value = data.roles?.length > 0 ? data.roles : routeSettings.defaultRoles
+
+    // 重新初始化志願相關資料（F5 重新整理時重載狀態）
+    const preferencesStore = usePreferencesStore()
+    preferencesStore.initFromLoginPayload(data)
+
+    // 若學生 JSON 讀取失敗，顯示友善提示
+    if (data.studentJSONError) {
+      ElMessage.warning(data.studentJSONError)
+    }
   }
   /** 模拟角色变化 */
   const changeRoles = async (role) => {
