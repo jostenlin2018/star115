@@ -147,6 +147,13 @@ const handleLogin = () => {
   }
 }
 
+/* 平板 (768px - 1024px) */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+  .login-card {
+    max-width: 480px;
+  }
+}
+
 /* ====== 手機橫向（<= 767px landscape） ====== */
 @media screen and (max-width: 767px) and (orientation: landscape) {
   .login-container {
@@ -181,11 +188,17 @@ const handleLogin = () => {
 /* ====== 手機直向（<= 575px portrait） ====== */
 @media screen and (max-width: 575px) and (orientation: portrait) {
   .login-container {
-    padding: 24px 16px;
+    padding: 0;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .login-card {
-    max-width: 100%;
+    width: 90%;
+    max-width: 90%;
+    min-width: 90%;
+    margin-top: 24px;
+    border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 
     :deep(.el-card__header) {
@@ -210,11 +223,11 @@ const handleLogin = () => {
 
 /* ====== 極小螢幕（<= 359px） ====== */
 @media screen and (max-width: 359px) {
-  .login-container {
-    padding: 16px 12px;
-  }
-
   .login-card {
+    width: 94%;
+    max-width: 94%;
+    min-width: 86%;
+
     :deep(.el-card__header) {
       padding: 20px 15px 14px;
     }
