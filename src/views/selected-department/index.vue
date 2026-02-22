@@ -36,6 +36,7 @@
             <el-tag :type="postRankingList.length >= maxPostRankingLimit ? 'danger' : 'info'">
               {{ postRankingList.length }} / {{ maxPostRankingLimit }} 個志願
             </el-tag>
+            <el-tag v-if="isDirty" type="danger">尚未儲存</el-tag>
           </span>
         </div>
       </template>
@@ -120,7 +121,13 @@
           <el-icon><Plus /></el-icon>
           新增科系
         </el-button>
-        <el-button v-if="isPostRankingOpen && rankingResult" type="primary" :loading="isSaving" @click="handleSave">
+        <el-button
+          v-if="isPostRankingOpen && rankingResult"
+          :type="isDirty ? 'warning' : 'primary'"
+          :disabled="!isDirty"
+          :loading="isSaving"
+          @click="handleSave"
+        >
           儲存志願
         </el-button>
       </div>
@@ -129,9 +136,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue"
-import { useRouter } from "vue-router"
-import { ElMessage } from "element-plus"
+import { ref, computed, onMounted, onUnmounted } from "vue"
+import { useRouter, onBeforeRouteLeave } from "vue-router"
+import { ElMessage, ElMessageBox } from "element-plus"
 import { ArrowUp, ArrowDown, Delete, Plus } from "@element-plus/icons-vue"
 import { usePreferencesStore } from "@/store/modules/preferences"
 
@@ -144,8 +151,33 @@ const postRankingList = computed(() => preferencesStore.postRankingList)
 const detailedPostRankingList = computed(() => preferencesStore.detailedPostRankingList)
 const maxPostRankingLimit = computed(() => preferencesStore.maxPostRankingLimit)
 const isPostRankingOpen = computed(() => preferencesStore.isPostRankingOpen())
+const isDirty = computed(() => preferencesStore.isDirty)
 
 const isSaving = ref(false)
+
+function handleBeforeUnload(e) {
+  if (isDirty.value) {
+    e.preventDefault()
+    e.returnValue = ""
+  }
+}
+
+onMounted(() => window.addEventListener("beforeunload", handleBeforeUnload))
+onUnmounted(() => window.removeEventListener("beforeunload", handleBeforeUnload))
+
+onBeforeRouteLeave(async () => {
+  if (!isDirty.value) return true
+  try {
+    await ElMessageBox.confirm("您有未儲存的志願變更，確定要離開嗎？", "警告", {
+      type: "warning",
+      confirmButtonText: "確定離開",
+      cancelButtonText: "取消"
+    })
+    return true
+  } catch {
+    return false
+  }
+})
 
 async function handleSave() {
   isSaving.value = true

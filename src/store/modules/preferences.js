@@ -24,6 +24,9 @@ export const usePreferencesStore = defineStore("preferences", () => {
   /** 前端資料是否與後端同步，savePreferences 成功後設 true */
   const pdfReady = ref(false)
 
+  /** 志願陣列是否有未儲存的變更 */
+  const isDirty = ref(false)
+
   /** 撕榜後：學生的撕榜結果代碼（例如 "1-1"），尚未撕榜時為 null */
   const rankingResult = ref(null)
 
@@ -86,6 +89,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
 
     flattenStudentData()
     pdfReady.value = true
+    isDirty.value = false
   }
 
   /**
@@ -206,16 +210,19 @@ export const usePreferencesStore = defineStore("preferences", () => {
   function addPreference(dept) {
     preferencesList.value.push(dept.完整代碼)
     pdfReady.value = false
+    isDirty.value = true
   }
 
   function replacePreference(existingIndex, dept) {
     preferencesList.value[existingIndex] = dept.完整代碼
     pdfReady.value = false
+    isDirty.value = true
   }
 
   function removePreference(index) {
     preferencesList.value.splice(index, 1)
     pdfReady.value = false
+    isDirty.value = true
   }
 
   function moveUp(index) {
@@ -223,6 +230,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
     const arr = preferencesList.value
     ;[arr[index - 1], arr[index]] = [arr[index], arr[index - 1]]
     pdfReady.value = false
+    isDirty.value = true
   }
 
   function moveDown(index) {
@@ -230,6 +238,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
     const arr = preferencesList.value
     ;[arr[index], arr[index + 1]] = [arr[index + 1], arr[index]]
     pdfReady.value = false
+    isDirty.value = true
   }
 
   async function savePreferences() {
@@ -239,6 +248,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
 
     const response = await saveStudentPreferencesApi(studentId, preferencesList.value)
     pdfReady.value = true
+    isDirty.value = false
     return response
   }
 
@@ -255,22 +265,26 @@ export const usePreferencesStore = defineStore("preferences", () => {
 
   function addPostRankingPreference(dept) {
     postRankingList.value.push(dept.完整代碼)
+    isDirty.value = true
   }
 
   function removePostRankingPreference(index) {
     postRankingList.value.splice(index, 1)
+    isDirty.value = true
   }
 
   function movePostRankingUp(index) {
     if (index <= 0) return
     const arr = postRankingList.value
     ;[arr[index - 1], arr[index]] = [arr[index], arr[index - 1]]
+    isDirty.value = true
   }
 
   function movePostRankingDown(index) {
     if (index >= postRankingList.value.length - 1) return
     const arr = postRankingList.value
     ;[arr[index], arr[index + 1]] = [arr[index + 1], arr[index]]
+    isDirty.value = true
   }
 
   async function savePostRankingPreferences() {
@@ -278,7 +292,9 @@ export const usePreferencesStore = defineStore("preferences", () => {
     const userStore = useUserStore()
     const studentId = userStore.username
 
-    return await savePostRankingPreferencesApi(studentId, postRankingList.value)
+    const response = await savePostRankingPreferencesApi(studentId, postRankingList.value)
+    isDirty.value = false
+    return response
   }
 
   return {
@@ -288,6 +304,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
     preferencesList,
     flattenedDepts,
     pdfReady,
+    isDirty,
     rankingResult,
     rankingName,
     postRankingList,

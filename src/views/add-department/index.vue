@@ -119,8 +119,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from "vue"
-import { useRouter } from "vue-router"
-import { ElMessage } from "element-plus"
+import { useRouter, onBeforeRouteLeave } from "vue-router"
+import { ElMessage, ElMessageBox } from "element-plus"
 import { Search, InfoFilled } from "@element-plus/icons-vue"
 import { usePreferencesStore } from "@/store/modules/preferences"
 
@@ -129,6 +129,7 @@ const preferencesStore = usePreferencesStore()
 
 const isPostRankingOpen = computed(() => preferencesStore.isPostRankingOpen())
 const availableDepartments = computed(() => preferencesStore.availableDepartments)
+const isDirty = computed(() => preferencesStore.isDirty)
 
 // ============ RWD：isMobile（僅用於 el-pagination props） ============
 const isMobile = ref(false)
@@ -136,13 +137,38 @@ let mq = null
 const onMediaChange = (e) => {
   isMobile.value = e.matches
 }
+
+function handleBeforeUnload(e) {
+  if (isDirty.value) {
+    e.preventDefault()
+    e.returnValue = ""
+  }
+}
+
 onMounted(() => {
   mq = window.matchMedia("(max-width: 768px)")
   isMobile.value = mq.matches
   mq.addEventListener("change", onMediaChange)
+  window.addEventListener("beforeunload", handleBeforeUnload)
 })
 onUnmounted(() => {
   mq?.removeEventListener("change", onMediaChange)
+  window.removeEventListener("beforeunload", handleBeforeUnload)
+})
+
+onBeforeRouteLeave(async (to) => {
+  if (to.path.includes("selected")) return true
+  if (!isDirty.value) return true
+  try {
+    await ElMessageBox.confirm("您有未儲存的志願變更，確定要離開嗎？", "警告", {
+      type: "warning",
+      confirmButtonText: "確定離開",
+      cancelButtonText: "取消"
+    })
+    return true
+  } catch {
+    return false
+  }
 })
 
 // ============ 搜尋狀態 ============
