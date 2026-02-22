@@ -56,6 +56,21 @@ router.beforeEach(async (to, _from, next) => {
       return next("/login")
     }
 
+    // Bug fix #4：雙向路由守衛，防止使用者跨階段存取錯誤頁面
+    const isPostRanking = preferencesStore.setup.status === "撕榜後"
+    // 撕榜後期：禁止進入撕榜前頁面
+    if (isPostRanking && ["/selected-group", "/add-group"].includes(to.path)) {
+      return next("/selected-department")
+    }
+    // 撕榜前期：禁止進入撕榜後頁面
+    if (!isPostRanking && ["/selected-department", "/add-department"].includes(to.path)) {
+      return next("/selected-group")
+    }
+    // 撕榜後期但尚未撕榜（rankingResult 為 null）：禁止進入 add-department
+    if (isPostRanking && to.path === "/add-department" && !preferencesStore.rankingResult) {
+      return next("/selected-department")
+    }
+
     // 设置 replace: true, 因此导航将不会留下历史记录
     next({ ...to, replace: true })
   } catch (error) {

@@ -39,21 +39,34 @@ function getSystemSetup() {
       };
     }
 
-    // 第一列為標題，第二列為設定值
-    const headers = data[0];
-    const values = data[1];
+    // setup 工作表為「直向鍵值格式」：
+    //   A 欄 = key（撕榜前 / 撕榜後 / 開始時間 / 結束時間）
+    //   B 欄 = value（有打 V 的列代表目前生效的狀態；時間列填入時間字串）
+    // 第 1 列（data[0]）為標題列（status / 目前狀態），從第 2 列開始讀取資料。
+    let status = '撕榜前';
+    let startTime = '';
+    let endTime = '';
 
-    const statusIdx = headers.indexOf('status');
-    const startTimeIdx = headers.indexOf('startTime');
-    const endTimeIdx = headers.indexOf('endTime');
+    for (let i = 1; i < data.length; i++) {
+      const key = String(data[i][0]).trim();
+      const val = String(data[i][1]).trim();
 
+      if (key === '撕榜前' || key === '撕榜後') {
+        // 哪一列的 B 欄有 V（不分大小寫），就是目前生效的狀態
+        if (val.toLowerCase() === 'v') {
+          status = key;
+        }
+      } else if (key === '開始時間') {
+        startTime = val;
+      } else if (key === '結束時間') {
+        endTime = val;
+      }
+    }
+
+    Logger.log('讀取系統設定成功: status=' + status + ', startTime=' + startTime + ', endTime=' + endTime);
     return {
       code: 0,
-      data: {
-        status: statusIdx !== -1 ? String(values[statusIdx]).trim() : '撕榜前',
-        startTime: startTimeIdx !== -1 ? String(values[startTimeIdx]).trim() : '',
-        endTime: endTimeIdx !== -1 ? String(values[endTimeIdx]).trim() : ''
-      },
+      data: { status: status, startTime: startTime, endTime: endTime },
       message: '成功'
     };
   } catch (error) {
@@ -134,6 +147,76 @@ function saveStudentPreferences(studentId, preferencesArray) {
   } catch (error) {
     Logger.log('儲存志願失敗: ' + error.toString());
     return { code: 500, data: null, message: '儲存志願失敗: ' + error.toString() };
+  }
+}
+
+// ============ 撕榜後志願儲存功能 ============
+
+/**
+ * 儲存學生撕榜後志願序到「撕榜後志願表」
+ * @param {string} studentId - 學號
+ * @param {Array<string>} preferencesArray - 志願完整代碼陣列（最多 50 筆）
+ * @returns {Object} 執行結果
+ */
+function savePostRankingPreferences(studentId, preferencesArray) {
+  try {
+    if (!studentId) {
+      return { code: 400, data: null, message: '學號不得為空' };
+    }
+    if (!Array.isArray(preferencesArray)) {
+      return { code: 400, data: null, message: '志願資料格式錯誤' };
+    }
+    if (preferencesArray.length > 50) {
+      return { code: 400, data: null, message: '志願數量不得超過 50 個' };
+    }
+
+    const sheet = getSpreadsheet().getSheetByName(CONFIG.SHEET_NAMES.POST_RANKING_PREFS);
+    if (!sheet) {
+      return { code: 500, data: null, message: '找不到「' + CONFIG.SHEET_NAMES.POST_RANKING_PREFS + '」工作表' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return { code: 500, data: null, message: '工作表資料不足' };
+    }
+
+    const headers = data[0];
+    const studentIdIdx = headers.indexOf('學號');
+    const vol1Idx      = headers.indexOf('志願1');
+
+    if (studentIdIdx === -1 || vol1Idx === -1) {
+      return { code: 500, data: null, message: '工作表缺少「學號」或「志願1」欄位' };
+    }
+
+    // 搜尋該學生所在列
+    let targetRowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][studentIdIdx]).trim() === String(studentId).trim()) {
+        targetRowIdx = i;
+        break;
+      }
+    }
+
+    if (targetRowIdx === -1) {
+      return { code: 404, data: null, message: '找不到學號 ' + studentId + ' 的資料列' };
+    }
+
+    // Bug fix #3：建立固定長度 50 的陣列，不足補空字串，確保覆蓋舊資料
+    const volValues = [];
+    for (let v = 0; v < 50; v++) {
+      volValues.push(preferencesArray[v] !== undefined ? preferencesArray[v] : '');
+    }
+
+    const targetRow = targetRowIdx + 1; // GAS 列號從 1 開始
+    const startCol  = vol1Idx + 1;      // GAS 欄號從 1 開始
+    sheet.getRange(targetRow, startCol, 1, 50).setValues([volValues]);
+
+    Logger.log('儲存學生 ' + studentId + ' 撕榜後志願成功，共 ' + preferencesArray.length + ' 筆');
+    return { code: 0, data: null, message: '儲存成功' };
+
+  } catch (error) {
+    Logger.log('儲存撕榜後志願失敗: ' + error.toString());
+    return { code: 500, data: null, message: '儲存撕榜後志願失敗: ' + error.toString() };
   }
 }
 
@@ -263,8 +346,11 @@ function loginUser(username, password) {
         Logger.log('讀取學生 JSON 失敗: ' + jsonError.toString());
       }
 
-      // 讀取已填志願清單
+      // 讀取撕榜前已填志願清單
       const preferencesList = getStudentPreferences(username);
+
+      // 讀取撕榜後相關資料（撕榜結果、中文名稱、已選志願）
+      const postRankingData = getStudentPostRankingData(username);
 
       Logger.log('登入成功: ' + username);
       return {
@@ -274,7 +360,10 @@ function loginUser(username, password) {
           setup: setup,
           studentJSON: studentJSON,
           studentJSONError: studentJSONError,
-          preferencesList: preferencesList
+          preferencesList: preferencesList,
+          rankingResult:   postRankingData.rankingResult,
+          rankingName:     postRankingData.rankingName,
+          postRankingList: postRankingData.postRankingList
         },
         message: '登入成功'
       };

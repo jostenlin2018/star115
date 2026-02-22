@@ -1,7 +1,7 @@
 import { ref, computed } from "vue"
 import { pinia } from "@/store"
 import { defineStore } from "pinia"
-import { saveStudentPreferencesApi, generatePDFApi } from "@/api/preferences"
+import { saveStudentPreferencesApi, generatePDFApi, savePostRankingPreferencesApi } from "@/api/preferences"
 
 export const usePreferencesStore = defineStore("preferences", () => {
   // ============ State ============
@@ -15,18 +15,23 @@ export const usePreferencesStore = defineStore("preferences", () => {
   /** 原始巢狀校系資料（從 Drive 讀取） */
   const studentJSON = ref(null)
 
-  /** 已選志願完整代碼字串陣列，最多 20 筆 */
+  /** 撕榜前：已選志願完整代碼字串陣列，最多 20 筆 */
   const preferencesList = ref([])
 
   /** 扁平化後的校系物件陣列，供搜尋使用 */
   const flattenedDepts = ref([])
 
-  /**
-   * 前端資料是否與後端同步。
-   * initFromLoginPayload 時預設 true（登入即同步）；
-   * 任何增刪移動後設 false；savePreferences 成功後設 true。
-   */
+  /** 前端資料是否與後端同步，savePreferences 成功後設 true */
   const pdfReady = ref(false)
+
+  /** 撕榜後：學生的撕榜結果代碼（例如 "1-1"），尚未撕榜時為 null */
+  const rankingResult = ref(null)
+
+  /** 撕榜後：撕榜結果中文名稱（例如 "國立臺灣大學 第一類學群"） */
+  const rankingName = ref(null)
+
+  /** 撕榜後：已選志願完整代碼陣列（長度 0~50） */
+  const postRankingList = ref([])
 
   // ============ Getters ============
 
@@ -36,6 +41,26 @@ export const usePreferencesStore = defineStore("preferences", () => {
    */
   const detailedPreferencesList = computed(() =>
     preferencesList.value.map((code) => {
+      const dept = flattenedDepts.value.find((d) => d.完整代碼 === code)
+      return dept || { 完整代碼: code, 學校名稱: "未知", 學群名稱: "—", 學系名稱: "資料缺失" }
+    })
+  )
+
+  /**
+   * 撕榜後可選科系清單：從 flattenedDepts 過濾出 學校學群代碼 === rankingResult + '-' 的科系。
+   * Bug fix #1：學校學群代碼格式為 "1-1-"（含尾部 dash），rankingResult 為 "1-1"，需拼接 '-'。
+   */
+  const availableDepartments = computed(() => {
+    if (!rankingResult.value) return []
+    return flattenedDepts.value.filter((d) => d.學校學群代碼 === rankingResult.value + "-")
+  })
+
+  /** 撕榜後志願數上限（動態取決於可選科系總數） */
+  const maxPostRankingLimit = computed(() => availableDepartments.value.length)
+
+  /** 將 postRankingList 代碼對應回完整扁平化物件，供 selected-department 頁面渲染 */
+  const detailedPostRankingList = computed(() =>
+    postRankingList.value.map((code) => {
       const dept = flattenedDepts.value.find((d) => d.完整代碼 === code)
       return dept || { 完整代碼: code, 學校名稱: "未知", 學群名稱: "—", 學系名稱: "資料缺失" }
     })
@@ -53,8 +78,13 @@ export const usePreferencesStore = defineStore("preferences", () => {
     }
     studentJSON.value = data.studentJSON || null
     preferencesList.value = Array.isArray(data.preferencesList) ? data.preferencesList : []
+
+    // 撕榜後新增欄位
+    rankingResult.value = data.rankingResult || null
+    rankingName.value = data.rankingName || null
+    postRankingList.value = Array.isArray(data.postRankingList) ? data.postRankingList : []
+
     flattenStudentData()
-    // 登入當下資料與後端完全同步，直接啟用 PDF 按鈕
     pdfReady.value = true
   }
 
@@ -83,7 +113,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
         const 學系名稱 = dept.學系名稱 || ""
         const 學系代碼 = String(dept.學系代碼 || "")
         const 完整代碼 = `${學校代碼}-${學群代碼}-${學系代碼}`
-        const 學校學群代碼 = `${學校代碼}-${學群代碼}`
+        const 學校學群代碼 = `${學校代碼}-${學群代碼}-`
         const 搜尋文本 = `${學校名稱} ${學群名稱} ${學系名稱}`
 
         result.push({
@@ -104,18 +134,16 @@ export const usePreferencesStore = defineStore("preferences", () => {
   }
 
   /**
-   * 判斷目前是否在志願選填開放時間內
+   * 判斷目前是否在撕榜前志願選填開放時間內
    * @returns {boolean}
    */
   function isOpen() {
     if (setup.value.status === "撕榜後") return false
 
     const { startTime, endTime } = setup.value
-    if (!startTime || !endTime) return true // 未設定時間區間，視為開放
+    if (!startTime || !endTime) return true
 
     const now = new Date()
-    // Safari 無法解析 "YYYY-MM-DD HH:mm:ss"（需要 T 分隔），
-    // 但所有瀏覽器都支援 "YYYY/MM/DD HH:mm:ss"，因此統一轉為斜線格式。
     const start = new Date(startTime.replace(/-/g, "/"))
     const end = new Date(endTime.replace(/-/g, "/"))
 
@@ -123,23 +151,37 @@ export const usePreferencesStore = defineStore("preferences", () => {
   }
 
   /**
-   * 檢查加入某校系的狀態（純資料邏輯，不操作 UI）
-   * @param {Object} dept - 扁平化校系物件（含 完整代碼 與 學校學群代碼）
+   * 判斷目前是否在撕榜後志願選填開放時間內
+   * @returns {boolean}
+   */
+  function isPostRankingOpen() {
+    if (setup.value.status !== "撕榜後") return false
+
+    const { startTime, endTime } = setup.value
+    if (!startTime || !endTime) return true
+
+    const now = new Date()
+    const start = new Date(startTime.replace(/-/g, "/"))
+    const end = new Date(endTime.replace(/-/g, "/"))
+
+    return now >= start && now <= end
+  }
+
+  /**
+   * 檢查加入某校系的狀態（撕榜前版）
+   * @param {Object} dept - 扁平化校系物件
    * @returns {{ status: 'ok'|'selected'|'replace'|'full', existingIndex?: number }}
    */
   function checkAddStatus(dept) {
-    // 1. 已選取（完整代碼已存在）
     if (preferencesList.value.includes(dept.完整代碼)) {
       return { status: "selected" }
     }
 
-    // 2. 同校同學群已有其他科系
     const existingIndex = detailedPreferencesList.value.findIndex((d) => d.學校學群代碼 === dept.學校學群代碼)
     if (existingIndex !== -1) {
       return { status: "replace", existingIndex }
     }
 
-    // 3. 已達上限
     if (preferencesList.value.length >= 20) {
       return { status: "full" }
     }
@@ -148,37 +190,34 @@ export const usePreferencesStore = defineStore("preferences", () => {
   }
 
   /**
-   * 直接加入一個新志願（呼叫前應確認 checkAddStatus 回傳 'ok'）
+   * 檢查加入撕榜後科系的狀態（簡化版：只有 ok / selected）
    * @param {Object} dept - 扁平化校系物件
+   * @returns {{ status: 'ok'|'selected' }}
    */
+  function checkPostRankingAddStatus(dept) {
+    if (postRankingList.value.includes(dept.完整代碼)) {
+      return { status: "selected" }
+    }
+    return { status: "ok" }
+  }
+
+  // ============ 撕榜前操作 Actions ============
+
   function addPreference(dept) {
     preferencesList.value.push(dept.完整代碼)
     pdfReady.value = false
   }
 
-  /**
-   * 原位替換同校同學群的志願（維持序位不變）
-   * @param {number} existingIndex - 欲替換的志願在 preferencesList 中的索引
-   * @param {Object} dept - 新的扁平化校系物件
-   */
   function replacePreference(existingIndex, dept) {
     preferencesList.value[existingIndex] = dept.完整代碼
     pdfReady.value = false
   }
 
-  /**
-   * 移除指定索引的志願
-   * @param {number} index
-   */
   function removePreference(index) {
     preferencesList.value.splice(index, 1)
     pdfReady.value = false
   }
 
-  /**
-   * 將指定志願向上移動一位
-   * @param {number} index
-   */
   function moveUp(index) {
     if (index <= 0) return
     const arr = preferencesList.value
@@ -186,10 +225,6 @@ export const usePreferencesStore = defineStore("preferences", () => {
     pdfReady.value = false
   }
 
-  /**
-   * 將指定志願向下移動一位
-   * @param {number} index
-   */
   function moveDown(index) {
     if (index >= preferencesList.value.length - 1) return
     const arr = preferencesList.value
@@ -197,11 +232,6 @@ export const usePreferencesStore = defineStore("preferences", () => {
     pdfReady.value = false
   }
 
-  /**
-   * 儲存志願至 GAS 後端
-   * 透過 useUserStore() 跨 Store 取得學號
-   * @returns {Promise<boolean>} 儲存是否成功
-   */
   async function savePreferences() {
     const { useUserStore } = await import("./user")
     const userStore = useUserStore()
@@ -212,11 +242,6 @@ export const usePreferencesStore = defineStore("preferences", () => {
     return response
   }
 
-  /**
-   * 呼叫 GAS 產生 PDF，回傳 PDF URL
-   * 透過 useUserStore() 跨 Store 取得學號
-   * @returns {Promise<string>} PDF URL
-   */
   async function generatePDF() {
     const { useUserStore } = await import("./user")
     const userStore = useUserStore()
@@ -226,6 +251,36 @@ export const usePreferencesStore = defineStore("preferences", () => {
     return response.data.pdfUrl
   }
 
+  // ============ 撕榜後操作 Actions ============
+
+  function addPostRankingPreference(dept) {
+    postRankingList.value.push(dept.完整代碼)
+  }
+
+  function removePostRankingPreference(index) {
+    postRankingList.value.splice(index, 1)
+  }
+
+  function movePostRankingUp(index) {
+    if (index <= 0) return
+    const arr = postRankingList.value
+    ;[arr[index - 1], arr[index]] = [arr[index], arr[index - 1]]
+  }
+
+  function movePostRankingDown(index) {
+    if (index >= postRankingList.value.length - 1) return
+    const arr = postRankingList.value
+    ;[arr[index], arr[index + 1]] = [arr[index + 1], arr[index]]
+  }
+
+  async function savePostRankingPreferences() {
+    const { useUserStore } = await import("./user")
+    const userStore = useUserStore()
+    const studentId = userStore.username
+
+    return await savePostRankingPreferencesApi(studentId, postRankingList.value)
+  }
+
   return {
     // State
     setup,
@@ -233,12 +288,20 @@ export const usePreferencesStore = defineStore("preferences", () => {
     preferencesList,
     flattenedDepts,
     pdfReady,
+    rankingResult,
+    rankingName,
+    postRankingList,
     // Getters
     detailedPreferencesList,
-    // Actions
+    availableDepartments,
+    maxPostRankingLimit,
+    detailedPostRankingList,
+    // Actions（共用）
     initFromLoginPayload,
     flattenStudentData,
     isOpen,
+    isPostRankingOpen,
+    // Actions（撕榜前）
     checkAddStatus,
     addPreference,
     replacePreference,
@@ -246,7 +309,14 @@ export const usePreferencesStore = defineStore("preferences", () => {
     moveUp,
     moveDown,
     savePreferences,
-    generatePDF
+    generatePDF,
+    // Actions（撕榜後）
+    checkPostRankingAddStatus,
+    addPostRankingPreference,
+    removePostRankingPreference,
+    movePostRankingUp,
+    movePostRankingDown,
+    savePostRankingPreferences
   }
 })
 

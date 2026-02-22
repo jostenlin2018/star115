@@ -1,6 +1,7 @@
 import { createRouter } from "vue-router"
 import { history, flatMultiLevelRoutes } from "./helper"
 import routeSettings from "@/config/route"
+import { usePreferencesStoreHook } from "@/store/modules/preferences"
 
 const Layouts = () => import("@/layouts/index.vue")
 
@@ -47,7 +48,11 @@ export const constantRoutes = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/selected-group",
+    // Bug fix #4：動態重導向，依 setup.status 決定首頁
+    redirect: () => {
+      const preferencesStore = usePreferencesStoreHook()
+      return preferencesStore.setup.status === "撕榜後" ? "/selected-department" : "/selected-group"
+    },
     children: [
       {
         path: "success",
@@ -72,6 +77,22 @@ export const constantRoutes = [
         name: "AddGroup",
         meta: {
           title: "搜尋並新增志願"
+        }
+      },
+      {
+        path: "selected-department",
+        component: () => import("@/views/selected-department/index.vue"),
+        name: "SelectedDepartment",
+        meta: {
+          title: "我的撕榜後志願"
+        }
+      },
+      {
+        path: "add-department",
+        component: () => import("@/views/add-department/index.vue"),
+        name: "AddDepartment",
+        meta: {
+          title: "選擇科系"
         }
       }
     ]

@@ -172,3 +172,13 @@ export function gasSaveStudentPreferences(studentId, preferencesArray) {
 export function gasGeneratePDF(studentId) {
   return callGasFunction("generatePDF", studentId)
 }
+
+/**
+ * 儲存學生撕榜後志願序
+ * @param {string} studentId - 學號
+ * @param {Array<string>} preferencesArray - 志願完整代碼陣列（最多 50 筆）
+ * @returns {Promise}
+ */
+export function gasSavePostRankingPreferences(studentId, preferencesArray) {
+  return callGasFunction("savePostRankingPreferences", studentId, preferencesArray)
+}

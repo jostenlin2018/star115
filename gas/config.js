@@ -17,7 +17,8 @@ const CONFIG = {
     GSAT_STANDARDS: '學測五標',
     SKILL_STANDARDS: '術科五標',
     SEMESTER_RANK: '各科校排學期平均',
-    STUDENT_PREFS: '撕榜前志願表'
+    STUDENT_PREFS: '撕榜前志願表',
+    POST_RANKING_PREFS: '撕榜後志願表'
   },
   
   // 科目對應

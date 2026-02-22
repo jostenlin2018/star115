@@ -235,6 +235,74 @@ function loadSemesterRankData() {
 }
 
 /**
+ * 讀取學生撕榜後相關資料（撕榜結果、中文名稱、已選志願）
+ * @param {string} studentId 學號
+ * @returns {{ rankingResult: string|null, rankingName: string|null, postRankingList: string[] }}
+ */
+function getStudentPostRankingData(studentId) {
+  const emptyResult = { rankingResult: null, rankingName: null, postRankingList: [] }
+
+  try {
+    const ss = getSpreadsheet()
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.POST_RANKING_PREFS)
+
+    if (!sheet) {
+      Logger.log('找不到工作表: ' + CONFIG.SHEET_NAMES.POST_RANKING_PREFS)
+      return emptyResult
+    }
+
+    const data = sheet.getDataRange().getValues()
+    if (data.length < 2) return emptyResult
+
+    const headers = data[0]
+    const studentIdIdx    = headers.indexOf('學號')
+    const rankingResultIdx = headers.indexOf('撕榜結果')
+    const universityIdx   = headers.indexOf('大學')
+    const groupIdx        = headers.indexOf('學群')
+    const vol1Idx         = headers.indexOf('志願1')
+
+    if (studentIdIdx === -1 || rankingResultIdx === -1 || vol1Idx === -1) {
+      Logger.log('撕榜後志願表缺少必要欄位')
+      return emptyResult
+    }
+
+    // 搜尋符合 studentId 的列
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i]
+      if (String(row[studentIdIdx]).trim() !== String(studentId).trim()) continue
+
+      // Bug fix #2：先檢查撕榜結果是否為空，避免拼接出 "undefined undefined"
+      const rankingResultVal = String(row[rankingResultIdx]).trim()
+      if (!rankingResultVal) return emptyResult
+
+      const university = universityIdx !== -1 ? String(row[universityIdx]).trim() : ''
+      const group      = groupIdx      !== -1 ? String(row[groupIdx]).trim()      : ''
+      const rankingName = (university && group) ? university + ' ' + group : null
+
+      // 讀取志願1~志願50，過濾空字串
+      const postRankingList = []
+      for (let v = 0; v < 50; v++) {
+        const val = row[vol1Idx + v]
+        if (val !== undefined && String(val).trim() !== '') {
+          postRankingList.push(String(val).trim())
+        }
+      }
+
+      return {
+        rankingResult: rankingResultVal,
+        rankingName:   rankingName,
+        postRankingList: postRankingList
+      }
+    }
+
+    return emptyResult
+  } catch (error) {
+    Logger.log('讀取撕榜後資料失敗: ' + error.toString())
+    return emptyResult
+  }
+}
+
+/**
  * 讀取學生志願序
  * @param {string} studentId 學號
  * @returns {Array<string>} 志願代碼陣列 ['1-1-101', ...]

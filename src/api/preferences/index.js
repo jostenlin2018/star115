@@ -1,4 +1,9 @@
-import { gasGetSystemSetup, gasSaveStudentPreferences, gasGeneratePDF } from "@/utils/gas-service"
+import {
+  gasGetSystemSetup,
+  gasSaveStudentPreferences,
+  gasGeneratePDF,
+  gasSavePostRankingPreferences
+} from "@/utils/gas-service"
 
 /**
  * 讀取系統設定（供非登入狀態查詢）
@@ -22,4 +27,13 @@ export function saveStudentPreferencesApi(studentId, preferencesArray) {
  */
 export function generatePDFApi(studentId) {
   return gasGeneratePDF(studentId)
+}
+
+/**
+ * 儲存學生撕榜後志願序
+ * @param {string} studentId - 學號
+ * @param {Array<string>} preferencesArray - 志願完整代碼陣列（最多 50 筆）
+ */
+export function savePostRankingPreferencesApi(studentId, preferencesArray) {
+  return gasSavePostRankingPreferences(studentId, preferencesArray)
 }

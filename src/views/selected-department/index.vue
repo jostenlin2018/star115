@@ -1,10 +1,28 @@
 <template>
-  <div class="selected-group-page">
+  <div class="selected-dept-page">
     <!-- 非開放期間警告 Banner -->
     <el-alert
-      v-if="!open"
+      v-if="!isPostRankingOpen"
       title="目前非志願選填開放時間，頁面為唯讀模式"
       type="warning"
+      :closable="false"
+      show-icon
+      class="time-alert"
+    />
+
+    <!-- 撕榜結果資訊列 / 尚未撕榜提示 -->
+    <el-alert
+      v-if="!rankingResult"
+      title="您尚未完成撕榜，目前無法選填志願"
+      type="info"
+      :closable="false"
+      show-icon
+      class="time-alert"
+    />
+    <el-alert
+      v-else
+      :title="`您的撕榜結果為：${rankingName}`"
+      type="success"
       :closable="false"
       show-icon
       class="time-alert"
@@ -13,10 +31,10 @@
     <el-card class="main-card">
       <template #header>
         <div class="card-header">
-          <span class="title">我的志願清單</span>
+          <span class="title">我的撕榜後志願</span>
           <span class="count">
-            <el-tag :type="preferencesList.length >= 20 ? 'danger' : 'info'">
-              {{ preferencesList.length }} / 20 個志願
+            <el-tag :type="postRankingList.length >= maxPostRankingLimit ? 'danger' : 'info'">
+              {{ postRankingList.length }} / {{ maxPostRankingLimit }} 個志願
             </el-tag>
           </span>
         </div>
@@ -24,26 +42,26 @@
 
       <!-- 電腦端：Table（CSS 在 <=768px 隱藏） -->
       <div class="table-wrapper">
-        <el-table :data="detailedPreferencesList" stripe border empty-text="尚未選填任何志願" class="pref-table">
+        <el-table :data="detailedPostRankingList" stripe border empty-text="尚未選填任何志願" class="pref-table">
           <el-table-column label="序號" type="index" width="60" align="center" />
           <el-table-column label="學校" prop="學校名稱" min-width="140" />
           <el-table-column label="學群" prop="學群名稱" min-width="120" />
           <el-table-column label="學系" prop="學系名稱" min-width="160" />
           <el-table-column label="完整代碼" prop="完整代碼" width="110" align="center" />
-          <el-table-column v-if="open" label="操作" width="160" align="center">
+          <el-table-column v-if="isPostRankingOpen && rankingResult" label="操作" width="160" align="center">
             <template #default="{ $index }">
               <div class="action-btns">
-                <el-button size="small" :disabled="$index === 0" @click="preferencesStore.moveUp($index)">
+                <el-button size="small" :disabled="$index === 0" @click="preferencesStore.movePostRankingUp($index)">
                   ↑
                 </el-button>
                 <el-button
                   size="small"
-                  :disabled="$index === detailedPreferencesList.length - 1"
-                  @click="preferencesStore.moveDown($index)"
+                  :disabled="$index === detailedPostRankingList.length - 1"
+                  @click="preferencesStore.movePostRankingDown($index)"
                 >
                   ↓
                 </el-button>
-                <el-button size="small" type="danger" @click="preferencesStore.removePreference($index)">
+                <el-button size="small" type="danger" @click="preferencesStore.removePostRankingPreference($index)">
                   移除
                 </el-button>
               </div>
@@ -54,8 +72,8 @@
 
       <!-- 手機端：卡片清單（CSS 在 >768px 隱藏） -->
       <div class="mobile-card-list">
-        <el-empty v-if="detailedPreferencesList.length === 0" description="尚未選填任何志願" />
-        <div v-for="(dept, index) in detailedPreferencesList" :key="dept.完整代碼" class="pref-card">
+        <el-empty v-if="detailedPostRankingList.length === 0" description="尚未選填任何志願" />
+        <div v-for="(dept, index) in detailedPostRankingList" :key="dept.完整代碼" class="pref-card">
           <!-- 頂部：志願序 + 學校名稱 -->
           <div class="pref-card__header">
             <span class="pref-card__rank">志願 {{ index + 1 }}</span>
@@ -71,21 +89,21 @@
             <div class="pref-card__code">代碼：{{ dept.完整代碼 }}</div>
           </div>
 
-          <!-- 底部：操作按鈕（僅開放期間顯示） -->
-          <div v-if="open" class="pref-card__actions">
-            <el-button size="default" :disabled="index === 0" @click="preferencesStore.moveUp(index)">
+          <!-- 底部：操作按鈕（僅開放期間且有撕榜結果時顯示） -->
+          <div v-if="isPostRankingOpen && rankingResult" class="pref-card__actions">
+            <el-button size="default" :disabled="index === 0" @click="preferencesStore.movePostRankingUp(index)">
               <el-icon><ArrowUp /></el-icon>
               上移
             </el-button>
             <el-button
               size="default"
-              :disabled="index === detailedPreferencesList.length - 1"
-              @click="preferencesStore.moveDown(index)"
+              :disabled="index === detailedPostRankingList.length - 1"
+              @click="preferencesStore.movePostRankingDown(index)"
             >
               <el-icon><ArrowDown /></el-icon>
               下移
             </el-button>
-            <el-button size="default" type="danger" @click="preferencesStore.removePreference(index)">
+            <el-button size="default" type="danger" @click="preferencesStore.removePostRankingPreference(index)">
               <el-icon><Delete /></el-icon>
               移除
             </el-button>
@@ -95,25 +113,18 @@
 
       <!-- 統一底部按鈕列（電腦端靠右，手機端透過 CSS 變為 sticky） -->
       <div class="footer-actions">
-        <el-button @click="router.push('/add-group')">
+        <el-button
+          :disabled="!rankingResult || postRankingList.length >= maxPostRankingLimit"
+          @click="router.push('/add-department')"
+        >
           <el-icon><Plus /></el-icon>
-          新增志願
+          新增科系
         </el-button>
-        <template v-if="open">
-          <el-button type="primary" :loading="isSaving" @click="handleSave">儲存志願</el-button>
-          <el-button type="success" :disabled="!pdfReady" :loading="isPdfGenerating" @click="handleGeneratePDF">
-            匯出 PDF
-          </el-button>
-        </template>
+        <el-button v-if="isPostRankingOpen && rankingResult" type="primary" :loading="isSaving" @click="handleSave">
+          儲存志願
+        </el-button>
       </div>
     </el-card>
-
-    <!-- PDF 產生中的全螢幕遮罩 -->
-    <div
-      v-if="isPdfGenerating"
-      v-loading.fullscreen.lock="isPdfGenerating"
-      element-loading-text="PDF 產生中，請稍候..."
-    />
   </div>
 </template>
 
@@ -127,18 +138,19 @@ import { usePreferencesStore } from "@/store/modules/preferences"
 const router = useRouter()
 const preferencesStore = usePreferencesStore()
 
-const preferencesList = computed(() => preferencesStore.preferencesList)
-const detailedPreferencesList = computed(() => preferencesStore.detailedPreferencesList)
-const pdfReady = computed(() => preferencesStore.pdfReady)
-const open = computed(() => preferencesStore.isOpen())
+const rankingResult = computed(() => preferencesStore.rankingResult)
+const rankingName = computed(() => preferencesStore.rankingName)
+const postRankingList = computed(() => preferencesStore.postRankingList)
+const detailedPostRankingList = computed(() => preferencesStore.detailedPostRankingList)
+const maxPostRankingLimit = computed(() => preferencesStore.maxPostRankingLimit)
+const isPostRankingOpen = computed(() => preferencesStore.isPostRankingOpen())
 
 const isSaving = ref(false)
-const isPdfGenerating = ref(false)
 
 async function handleSave() {
   isSaving.value = true
   try {
-    await preferencesStore.savePreferences()
+    await preferencesStore.savePostRankingPreferences()
     ElMessage.success("志願儲存成功")
   } catch {
     ElMessage.error("儲存失敗，請稍後再試")
@@ -146,23 +158,10 @@ async function handleSave() {
     isSaving.value = false
   }
 }
-
-async function handleGeneratePDF() {
-  isPdfGenerating.value = true
-  try {
-    const pdfUrl = await preferencesStore.generatePDF()
-    ElMessage.success("PDF 產生成功，即將開啟")
-    window.open(pdfUrl, "_blank")
-  } catch {
-    ElMessage.error("PDF 產生失敗，請稍後再試")
-  } finally {
-    isPdfGenerating.value = false
-  }
-}
 </script>
 
 <style scoped lang="scss">
-.selected-group-page {
+.selected-dept-page {
   padding: 20px;
   max-width: 960px;
   margin: 0 auto;
@@ -295,13 +294,11 @@ async function handleGeneratePDF() {
 
 /* ====== RWD：手機端覆蓋 ====== */
 @media (max-width: 768px) {
-  .selected-group-page {
+  .selected-dept-page {
     padding: 12px;
-    /* 為底部 sticky bar 騰出空間，避免內容被遮住 */
     padding-bottom: 90px;
   }
 
-  /* 隱藏桌面 table，顯示手機卡片 */
   .table-wrapper {
     display: none;
   }
@@ -310,7 +307,6 @@ async function handleGeneratePDF() {
     display: flex;
   }
 
-  /* 將底部按鈕列轉為 Sticky Action Bar */
   .footer-actions {
     position: fixed;
     bottom: 0;
@@ -319,7 +315,6 @@ async function handleGeneratePDF() {
     z-index: 100;
     justify-content: center;
     padding: 12px 16px;
-    /* iOS Safe Area 支援 */
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     background: var(--el-bg-color);
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
@@ -327,7 +322,7 @@ async function handleGeneratePDF() {
 
     .el-button {
       flex: 1;
-      max-width: 140px;
+      max-width: 160px;
     }
   }
 }
