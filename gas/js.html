@@ -58095,7 +58095,7 @@
             re = se.補充搜尋關鍵詞 || "",
             le = `${z}-${Q}-${me}`,
             we = `${z}-${Q}-`,
-            be = `${H} ${W} ${U} ${fe} ${Y} ${re}`
+            be = `${H} ${W} ${U} ${fe} ${Y} ${re}`.toLowerCase()
           D.push({
             學校名稱: H,
             學校代碼: z,
@@ -62269,11 +62269,11 @@
             const b = d.value.trim()
             if (!b) return []
             const C = b.split(/\s+/).filter(Boolean),
-              T = n.flattenedDepts.filter(($) => C.every((O) => $.搜尋文本.includes(O)))
+              T = n.flattenedDepts.filter(($) => C.every((O) => $.搜尋文本.includes(O.toLowerCase())))
             return (
               T.sort(($, O) => {
-                const I = $.搜尋文本.includes(b) ? 1 : 0
-                return (O.搜尋文本.includes(b) ? 1 : 0) - I
+                const I = $.搜尋文本.includes(b.toLowerCase()) ? 1 : 0
+                return (O.搜尋文本.includes(b.toLowerCase()) ? 1 : 0) - I
               }),
               T
             )
@@ -62515,7 +62515,7 @@
         }
       }
     },
-    kde = Ht(Sde, [["__scopeId", "data-v-b5f84c29"]]),
+    kde = Ht(Sde, [["__scopeId", "data-v-c3ca6f07"]]),
     Ede = Object.freeze(
       Object.defineProperty({ __proto__: null, default: kde }, Symbol.toStringTag, { value: "Module" })
     ),
@@ -62927,11 +62927,11 @@
             const b = f.value.trim()
             if (!b) return o.value
             const C = b.split(/\s+/).filter(Boolean),
-              M = o.value.filter((T) => C.every(($) => T.搜尋文本.includes($)))
+              M = o.value.filter((T) => C.every(($) => T.搜尋文本.includes($.toLowerCase())))
             return (
               M.sort((T, $) => {
-                const O = T.搜尋文本.includes(b) ? 1 : 0
-                return ($.搜尋文本.includes(b) ? 1 : 0) - O
+                const O = T.搜尋文本.includes(b.toLowerCase()) ? 1 : 0
+                return ($.搜尋文本.includes(b.toLowerCase()) ? 1 : 0) - O
               }),
               M
             )
@@ -63140,7 +63140,7 @@
         }
       }
     },
-    l0e = Ht(o0e, [["__scopeId", "data-v-69354a46"]]),
+    l0e = Ht(o0e, [["__scopeId", "data-v-c3c1ae56"]]),
     r0e = Object.freeze(
       Object.defineProperty({ __proto__: null, default: l0e }, Symbol.toStringTag, { value: "Module" })
     )

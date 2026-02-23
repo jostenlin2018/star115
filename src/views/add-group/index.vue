@@ -212,12 +212,12 @@ const filteredAndSorted = computed(() => {
   const flatDepts = preferencesStore.flattenedDepts
 
   // AND 邏輯過濾
-  const filtered = flatDepts.filter((dept) => keywords.every((k) => dept.搜尋文本.includes(k)))
+  const filtered = flatDepts.filter((dept) => keywords.every((k) => dept.搜尋文本.includes(k.toLowerCase())))
 
   // 智慧排序：完整字串命中（連續）優先
   filtered.sort((a, b) => {
-    const aExact = a.搜尋文本.includes(kw) ? 1 : 0
-    const bExact = b.搜尋文本.includes(kw) ? 1 : 0
+    const aExact = a.搜尋文本.includes(kw.toLowerCase()) ? 1 : 0
+    const bExact = b.搜尋文本.includes(kw.toLowerCase()) ? 1 : 0
     return bExact - aExact
   })
 

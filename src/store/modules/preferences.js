@@ -121,7 +121,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
         const 補充搜尋關鍵詞 = dept.補充搜尋關鍵詞 || ""
         const 完整代碼 = `${學校代碼}-${學群代碼}-${學系代碼}`
         const 學校學群代碼 = `${學校代碼}-${學群代碼}-`
-        const 搜尋文本 = `${學校名稱} ${學校簡稱} ${學群名稱} ${學系名稱} ${學系簡稱} ${補充搜尋關鍵詞}`
+        const 搜尋文本 = `${學校名稱} ${學校簡稱} ${學群名稱} ${學系名稱} ${學系簡稱} ${補充搜尋關鍵詞}`.toLowerCase()
 
         result.push({
           學校名稱,

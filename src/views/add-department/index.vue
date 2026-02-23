@@ -200,12 +200,12 @@ const filteredDepts = computed(() => {
   if (!kw) return availableDepartments.value
 
   const keywords = kw.split(/\s+/).filter(Boolean)
-  const filtered = availableDepartments.value.filter((d) => keywords.every((k) => d.搜尋文本.includes(k)))
+  const filtered = availableDepartments.value.filter((d) => keywords.every((k) => d.搜尋文本.includes(k.toLowerCase())))
 
   // 智慧排序：完整命中優先
   filtered.sort((a, b) => {
-    const aExact = a.搜尋文本.includes(kw) ? 1 : 0
-    const bExact = b.搜尋文本.includes(kw) ? 1 : 0
+    const aExact = a.搜尋文本.includes(kw.toLowerCase()) ? 1 : 0
+    const bExact = b.搜尋文本.includes(kw.toLowerCase()) ? 1 : 0
     return bExact - aExact
   })
 

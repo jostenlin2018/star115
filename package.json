@@ -16,7 +16,7 @@
     "dev": "vite",
     "build:stage": "vite build --mode staging",
     "build:prod": "vite build",
-    "build:gas": "powershell -Command \"$env:VITE_BUILD_FOR_GAS='true'; vite build --mode gas\"",
+    "build:gas": "powershell -Command \"$env:VITE_BUILD_FOR_GAS='true'; npx vite build --mode gas\"",
     "deploy:gas": "npm run build:gas && powershell -File gas.ps1 && clasp push",
     "preview:stage": "pnpm build:stage && vite preview",
     "preview:prod": "pnpm build:prod && vite preview",
