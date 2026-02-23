@@ -73,6 +73,7 @@ function buildStudentDataJSON(studentId, referenceData) {
           groupedBySchool[groupKey] = {
             學校名稱: schoolName,
             學校代碼: schoolCode,
+            學校簡稱: dept['學校簡稱'] || '',
             學群類別: groupCategory,
             學群類別代碼: groupCode,
             可選填科系: []
@@ -82,7 +83,9 @@ function buildStudentDataJSON(studentId, referenceData) {
         // 加入學系資訊（確保學系代碼為數字）
         groupedBySchool[groupKey].可選填科系.push({
           學系代碼: parseInt(dept['學系代碼']) || 0,
-          學系名稱: dept['學系名稱'] || ''
+          學系名稱: dept['學系名稱'] || '',
+          學系簡稱: dept['學系簡稱'] || '',
+          補充搜尋關鍵詞: dept['補充搜尋關鍵詞'] || ''
         });
       });
       

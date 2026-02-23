@@ -56,16 +56,22 @@ function loadUniversityRankRequirements() {
   }
   
   const data = sheet.getDataRange().getValues();
-  // 假設 CSV 標題是：代碼, 學校名稱, 學校簡稱, 學業成績百分比
-  // 我們需要第 1 欄(索引0)的代碼 和 第 4 欄(索引3)的百分比
-  
+  const headers = data[0].map(h => h.toString().trim());
+  const codeIdx       = headers.indexOf('代碼');
+  const percentageIdx = headers.indexOf('學業成績百分比');
+
+  if (codeIdx === -1 || percentageIdx === -1) {
+    Logger.log('大學要求校排工作表缺少「代碼」或「學業成績百分比」欄位，headers: ' + JSON.stringify(headers));
+    return {};
+  }
+
   const requirements = {};
   
   // 從第 2 列開始讀取 (跳過標題)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const schoolCode = row[0].toString().trim(); // 學校代碼
-    const percentage = parseFloat(row[3]);      // 學業成績百分比
+    const schoolCode = row[codeIdx].toString().trim();
+    const percentage = parseFloat(row[percentageIdx]);
     
     if (schoolCode && !isNaN(percentage)) {
       requirements[schoolCode] = percentage;

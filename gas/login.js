@@ -259,15 +259,25 @@ function loadUsersFromSheet() {
     const data = sheet.getDataRange().getValues();
     const users = {};
 
-    // 從第2列開始讀取（第1列是標題）
+    const headers = data[0];
+    const usernameIdx    = headers.indexOf('username');
+    const passwordIdx    = headers.indexOf('password');
+    const displayNameIdx = headers.indexOf('displayName');
+    const classnumIdx    = headers.indexOf('classnum');
+    const statusIdx      = headers.indexOf('status');
+
+    if (usernameIdx === -1 || passwordIdx === -1) {
+      Logger.log('users 工作表缺少必要欄位（username / password），headers: ' + JSON.stringify(headers));
+      return {};
+    }
+
     // 從第2列開始讀取（第1列是標題）
     for (let i = 1; i < data.length; i++) {
-      const username = String(data[i][0]).trim();    // A欄: username
-      const password = String(data[i][1]).trim();    // B欄: password
-      const displayName = String(data[i][2] || 'unknown'); // C欄: displayName
-      const classnum = String(data[i][3] || '');     // D欄: classnum (新增)
-      const roles = String(data[i][4] || 'viewer');  // E欄: roles (改為索引 4)
-      const status = String(data[i][5] || 'active'); // F欄: status (改為索引 5)
+      const username    = String(data[i][usernameIdx]).trim();
+      const password    = String(data[i][passwordIdx]).trim();
+      const displayName = displayNameIdx !== -1 ? String(data[i][displayNameIdx] || 'unknown') : 'unknown';
+      const classnum    = classnumIdx    !== -1 ? String(data[i][classnumIdx]    || '')        : '';
+      const status      = statusIdx      !== -1 ? String(data[i][statusIdx]      || 'active')  : 'active';
 
       // 只載入啟用的帳號
       if (username && status === 'active') {
@@ -275,8 +285,7 @@ function loadUsersFromSheet() {
           password: password,
           username: username,
           displayName: displayName || username,
-          classnum: classnum, // 新增 classnum
-          roles: roles ? [roles] : ['viewer']
+          classnum: classnum
         };
       }
     }
@@ -335,7 +344,6 @@ function loginUser(username, password) {
       sessionData[token] = {
         username: username,
         displayName: users[username].displayName,
-        roles: users[username].roles,
         nationalId: users[username].password,
         loginTime: now
       };
@@ -463,7 +471,6 @@ function getUserInfo(token) {
         data: {
           username: sessionData[token].username,
           displayName: sessionData[token].displayName,
-          roles: sessionData[token].roles,
           nationalId: sessionData[token].nationalId,
           setup: setup,
           studentJSON: studentJSON,
@@ -543,145 +550,3 @@ function testLogin() {
   return result;
 }
 
-/**
- * 測試總務股長統計功能
- */
-function testOfficerStatus() {
-  // 測試學號 123（林小良，總務股長，classnum: 10103）
-  const result = getOfficerStatus('123');
-  Logger.log('總務股長統計測試結果: ' + JSON.stringify(result, null, 2));
-  return result;
-}
-
-// ============ 總務股長統計功能 ============
-
-/**
- * 取得總務股長班級填報統計
- * @param {string} stunum - 學號（對應 username）
- * @returns {Object} 統計結果
- */
-function getOfficerStatus(stunum) {
-  try {
-    // 1. 權限檢查
-    const users = loadUsersFromSheet();
-
-    // 檢查使用者是否存在
-    if (!users[stunum]) {
-      Logger.log('使用者不存在: ' + stunum);
-      return {
-        code: 404,
-        data: null,
-        message: '使用者不存在'
-      };
-    }
-
-    const user = users[stunum];
-
-    // 檢查是否為總務股長
-    if (!user.roles || !user.roles.includes('chief')) {
-      Logger.log('非總務股長: ' + stunum);
-      return {
-        code: 0,
-        data: null,
-        message: '非總務股長'
-      };
-    }
-
-    // 2. 取得班級前綴（前3個字元）
-    const classPrefix = user.classnum.substring(0, 3);
-    Logger.log('班級代號: ' + classPrefix);
-
-    // 3. 讀取與統計資料
-    const sheet = getSpreadsheet().getSheetByName('active');
-
-    if (!sheet) {
-      Logger.log('找不到 active 工作表');
-      return {
-        code: 500,
-        data: null,
-        message: '找不到 active 工作表'
-      };
-    }
-
-    const data = sheet.getDataRange().getValues();
-
-    // 找出標題列的欄位索引（支援中英文欄位名稱）
-    const headers = data[0];
-
-    // 嘗試找 classnum 或 班級座號
-    let classnumIndex = headers.indexOf('classnum');
-    if (classnumIndex === -1) {
-      classnumIndex = headers.indexOf('班級座號');
-    }
-
-    // 嘗試找 name 或 學生姓名
-    let nameIndex = headers.indexOf('name');
-    if (nameIndex === -1) {
-      nameIndex = headers.indexOf('學生姓名');
-    }
-
-    // 找 isok
-    const isokIndex = headers.indexOf('isok');
-
-    Logger.log('欄位索引 - classnumIndex: ' + classnumIndex + ', nameIndex: ' + nameIndex + ', isokIndex: ' + isokIndex);
-
-    if (classnumIndex === -1 || isokIndex === -1 || nameIndex === -1) {
-      Logger.log('找不到必要欄位，標題列：' + JSON.stringify(headers));
-      return {
-        code: 500,
-        data: null,
-        message: '工作表欄位設定錯誤，找不到必要欄位'
-      };
-    }
-
-    // 統計變數
-    let totalCount = 0;
-    let completedCount = 0;
-    const uncompletedList = [];
-
-    // 從第2列開始遍歷資料（跳過標題列）
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const classnumValue = String(row[classnumIndex]).trim();
-      const isokValue = String(row[isokIndex]).trim().toLowerCase();
-      const nameValue = String(row[nameIndex]).trim();
-
-      // 檢查是否符合班級代號
-      if (classnumValue.startsWith(classPrefix)) {
-        totalCount++;
-
-        // 檢查是否已填寫
-        if (isokValue === 'ok') {
-          completedCount++;
-        } else {
-          // 未填寫，加入名單
-          uncompletedList.push({
-            seat: classnumValue,
-            name: nameValue
-          });
-        }
-      }
-    }
-
-    Logger.log('統計完成 - 應填: ' + totalCount + ', 已填: ' + completedCount);
-
-    // 4. 回傳結果
-    return {
-      code: 0,
-      data: {
-        totalCount: totalCount,
-        completedCount: completedCount,
-        uncompletedList: uncompletedList
-      },
-      message: '成功'
-    };
-
-  } catch (error) {
-    Logger.log('取得總務股長統計失敗: ' + error.toString());
-    return {
-      code: 500,
-      data: null,
-      message: '取得統計資料失敗: ' + error.toString()
-    };
-  }
-}

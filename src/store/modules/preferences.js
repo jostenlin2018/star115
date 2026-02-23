@@ -109,6 +109,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
     for (const group of schoolGroups) {
       const 學校名稱 = group.學校名稱 || ""
       const 學校代碼 = String(group.學校代碼 || "")
+      const 學校簡稱 = group.學校簡稱 || ""
       const 學群名稱 = group.學群類別 || group.學群名稱 || ""
       const 學群代碼 = String(group.學群類別代碼 || group.學群代碼 || "")
       const depts = group.可選填科系 || group.學系 || []
@@ -116,9 +117,11 @@ export const usePreferencesStore = defineStore("preferences", () => {
       for (const dept of depts) {
         const 學系名稱 = dept.學系名稱 || ""
         const 學系代碼 = String(dept.學系代碼 || "")
+        const 學系簡稱 = dept.學系簡稱 || ""
+        const 補充搜尋關鍵詞 = dept.補充搜尋關鍵詞 || ""
         const 完整代碼 = `${學校代碼}-${學群代碼}-${學系代碼}`
         const 學校學群代碼 = `${學校代碼}-${學群代碼}-`
-        const 搜尋文本 = `${學校名稱} ${學群名稱} ${學系名稱}`
+        const 搜尋文本 = `${學校名稱} ${學校簡稱} ${學群名稱} ${學系名稱} ${學系簡稱} ${補充搜尋關鍵詞}`
 
         result.push({
           學校名稱,
