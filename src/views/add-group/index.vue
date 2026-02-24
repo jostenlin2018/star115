@@ -18,6 +18,19 @@
         </div>
       </template>
 
+      <div class="search-hint">
+        <div class="search-hint__title">
+          <el-icon class="hint-icon"><InfoFilled /></el-icon>
+          <span>說明：</span>
+        </div>
+        <ol class="search-hint__list">
+          <li>多關鍵詞請用 <strong>半形空白</strong> 分隔，例如：<code>台大 電機</code></li>
+          <li>搜尋到的科系均為通過繁星推薦檢定的科系。</li>
+          <li>如果搜尋不到想要的科系，請查閱簡章是否通過檢定。</li>
+          <li>系統操作若有疑義，請洽教務處註冊組。</li>
+        </ol>
+      </div>
+
       <!-- 搜尋欄（手機端透過 CSS 改為垂直排列） -->
       <div class="search-bar">
         <el-input
@@ -36,11 +49,6 @@
         <el-button class="search-btn" type="primary" :disabled="!open || !inputKeyword.trim()" @click="handleSearch">
           搜尋
         </el-button>
-      </div>
-
-      <div class="search-hint">
-        <el-icon class="hint-icon"><InfoFilled /></el-icon>
-        多關鍵詞請用<strong>半形空白</strong>分隔，例如：<code>台大 電機</code>
       </div>
 
       <!-- 搜尋狀態提示 -->
@@ -324,26 +332,51 @@ async function handleAdd(dept) {
 }
 
 .search-hint {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.search-hint__title {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
+  margin-bottom: 4px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
 
-  .hint-icon {
-    font-size: 14px;
-    color: var(--el-color-info);
-    flex-shrink: 0;
-  }
+.search-hint__list {
+  margin: 0;
+  padding-left: 20px;
+}
 
-  code {
-    background: var(--el-fill-color);
-    border-radius: 3px;
-    padding: 0 4px;
-    font-family: monospace;
-    color: var(--el-text-color-primary);
-  }
+.search-hint__list li {
+  margin: 0;
+}
+
+.search-hint__list li + li {
+  margin-top: 2px;
+}
+
+.search-hint__list code {
+  background: var(--el-fill-color);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: monospace;
+  color: var(--el-text-color-primary);
+}
+
+.search-hint .hint-icon {
+  font-size: 14px;
+  color: var(--el-color-info);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .search-info {

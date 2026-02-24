@@ -41,6 +41,18 @@
         </div>
       </template>
 
+      <div class="info-hint">
+        <div class="info-hint__title">
+          <el-icon class="hint-icon"><InfoFilled /></el-icon>
+          <span>說明：</span>
+        </div>
+        <ol class="info-hint__list">
+          <li>科系新增、刪除、或變更志願序之後請記得存檔。</li>
+          <li>存檔完成之後，才能匯出PDF志願表。</li>
+          <li>非志願選填時段系統會呈現唯讀，無法變更或匯出。</li>
+        </ol>
+      </div>
+
       <!-- 電腦端：Table（CSS 在 <=768px 隱藏） -->
       <div class="table-wrapper">
         <el-table :data="detailedPostRankingList" stripe border empty-text="尚未選填任何志願" class="pref-table">
@@ -139,7 +151,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue"
 import { useRouter, onBeforeRouteLeave } from "vue-router"
 import { ElMessage, ElMessageBox } from "element-plus"
-import { ArrowUp, ArrowDown, Delete, Plus } from "@element-plus/icons-vue"
+import { ArrowUp, ArrowDown, Delete, Plus, InfoFilled } from "@element-plus/icons-vue"
 import { usePreferencesStore } from "@/store/modules/preferences"
 
 const router = useRouter()
@@ -214,6 +226,42 @@ async function handleSave() {
       font-weight: 600;
     }
   }
+}
+
+.info-hint {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.info-hint__title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+.info-hint__list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info-hint__list li + li {
+  margin-top: 2px;
+}
+
+.info-hint .hint-icon {
+  font-size: 14px;
+  color: var(--el-color-info);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* ====== 桌面版 table（>768px 顯示，<=768px 隱藏） ====== */
