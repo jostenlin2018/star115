@@ -31,6 +31,15 @@
         </ol>
       </div>
 
+      <el-alert
+        v-if="isFull"
+        :title="`已達此學群可填志願上限（${postRankingList.length} / ${maxPostRankingLimit}）`"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="limit-alert"
+      />
+
       <!-- 搜尋欄（手機端透過 CSS 改為垂直排列） -->
       <div class="search-bar">
         <el-input
@@ -69,11 +78,11 @@
             <template #default="{ row }">
               <el-button
                 size="small"
-                :type="isSelected(row) ? 'info' : 'primary'"
-                :disabled="!isPostRankingOpen || isSelected(row)"
+                :type="isSelected(row) || isFull ? 'info' : 'primary'"
+                :disabled="!isPostRankingOpen || isSelected(row) || isFull"
                 @click="handleAdd(row)"
               >
-                {{ isSelected(row) ? "已選取" : "加入志願" }}
+                {{ isSelected(row) ? "已選取" : isFull ? "已達上限" : "加入志願" }}
               </el-button>
             </template>
           </el-table-column>
@@ -99,12 +108,12 @@
           <!-- 底部：加入按鈕（滿版） -->
           <div class="result-card__action">
             <el-button
-              :type="isSelected(dept) ? 'info' : 'primary'"
-              :disabled="!isPostRankingOpen || isSelected(dept)"
+              :type="isSelected(dept) || isFull ? 'info' : 'primary'"
+              :disabled="!isPostRankingOpen || isSelected(dept) || isFull"
               style="width: 100%"
               @click="handleAdd(dept)"
             >
-              {{ isSelected(dept) ? "已選取" : "加入志願" }}
+              {{ isSelected(dept) ? "已選取" : isFull ? "已達上限" : "加入志願" }}
             </el-button>
           </div>
         </div>
@@ -137,6 +146,9 @@ const preferencesStore = usePreferencesStore()
 
 const isPostRankingOpen = computed(() => preferencesStore.isPostRankingOpen())
 const availableDepartments = computed(() => preferencesStore.availableDepartments)
+const postRankingList = computed(() => preferencesStore.postRankingList)
+const maxPostRankingLimit = computed(() => preferencesStore.maxPostRankingLimit)
+const isFull = computed(() => postRankingList.value.length >= maxPostRankingLimit.value)
 const isDirty = computed(() => preferencesStore.isDirty)
 
 // ============ RWD：isMobile（僅用於 el-pagination props） ============
@@ -241,9 +253,17 @@ function handleAdd(dept) {
   const { status } = preferencesStore.checkPostRankingAddStatus(dept)
 
   if (status === "selected") return
+  if (status === "full") {
+    ElMessage.warning(`已達可填志願上限（${postRankingList.value.length} / ${maxPostRankingLimit.value}）`)
+    return
+  }
 
   // status === 'ok'
-  preferencesStore.addPostRankingPreference(dept)
+  const added = preferencesStore.addPostRankingPreference(dept)
+  if (!added) {
+    ElMessage.warning(`已達可填志願上限（${postRankingList.value.length} / ${maxPostRankingLimit.value}）`)
+    return
+  }
   ElMessage.success(`已加入「${dept.學系名稱}」`)
 }
 </script>
@@ -257,6 +277,10 @@ function handleAdd(dept) {
 
 .time-alert {
   margin-bottom: 16px;
+}
+
+.limit-alert {
+  margin-bottom: 12px;
 }
 
 .main-card {

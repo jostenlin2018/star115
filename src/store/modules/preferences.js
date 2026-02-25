@@ -58,8 +58,16 @@ export const usePreferencesStore = defineStore("preferences", () => {
     return flattenedDepts.value.filter((d) => d.學校學群代碼 === rankingResult.value + "-")
   })
 
-  /** 撕榜後志願數上限（動態取決於可選科系總數） */
-  const maxPostRankingLimit = computed(() => availableDepartments.value.length)
+  /** 撕榜後志願數上限（取撕榜學群固定值，並受系統 50 欄位上限保護） */
+  const maxPostRankingLimit = computed(() => {
+    const firstDept = availableDepartments.value[0]
+    if (!firstDept) return 0
+
+    const rawLimit = Number(firstDept.招生名額可填志願數)
+    if (!Number.isFinite(rawLimit)) return 0
+
+    return Math.max(0, Math.min(Math.floor(rawLimit), 50))
+  })
 
   /** 將 postRankingList 代碼對應回完整扁平化物件，供 selected-department 頁面渲染 */
   const detailedPostRankingList = computed(() =>
@@ -112,6 +120,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
       const 學校簡稱 = group.學校簡稱 || ""
       const 學群名稱 = group.學群類別 || group.學群名稱 || ""
       const 學群代碼 = String(group.學群類別代碼 || group.學群代碼 || "")
+      const 招生名額可填志願數 = Number(group.招生名額可填志願數) || 0
       const depts = group.可選填科系 || group.學系 || []
 
       for (const dept of depts) {
@@ -130,6 +139,7 @@ export const usePreferencesStore = defineStore("preferences", () => {
           學群代碼,
           學系名稱,
           學系代碼,
+          招生名額可填志願數,
           完整代碼,
           學校學群代碼,
           搜尋文本
@@ -199,11 +209,14 @@ export const usePreferencesStore = defineStore("preferences", () => {
   /**
    * 檢查加入撕榜後科系的狀態（簡化版：只有 ok / selected）
    * @param {Object} dept - 扁平化校系物件
-   * @returns {{ status: 'ok'|'selected' }}
+   * @returns {{ status: 'ok'|'selected'|'full' }}
    */
   function checkPostRankingAddStatus(dept) {
     if (postRankingList.value.includes(dept.完整代碼)) {
       return { status: "selected" }
+    }
+    if (postRankingList.value.length >= maxPostRankingLimit.value) {
+      return { status: "full" }
     }
     return { status: "ok" }
   }
@@ -267,8 +280,10 @@ export const usePreferencesStore = defineStore("preferences", () => {
   // ============ 撕榜後操作 Actions ============
 
   function addPostRankingPreference(dept) {
+    if (postRankingList.value.length >= maxPostRankingLimit.value) return false
     postRankingList.value.push(dept.完整代碼)
     isDirty.value = true
+    return true
   }
 
   function removePostRankingPreference(index) {

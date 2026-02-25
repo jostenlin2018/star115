@@ -166,6 +166,7 @@ function savePostRankingPreferences(studentId, preferencesArray) {
     if (!Array.isArray(preferencesArray)) {
       return { code: 400, data: null, message: '志願資料格式錯誤' };
     }
+    // 先做技術上限保護（工作表僅有志願1~志願50欄）
     if (preferencesArray.length > 50) {
       return { code: 400, data: null, message: '志願數量不得超過 50 個' };
     }
@@ -183,9 +184,10 @@ function savePostRankingPreferences(studentId, preferencesArray) {
     const headers = data[0];
     const studentIdIdx = headers.indexOf('學號');
     const vol1Idx      = headers.indexOf('志願1');
+    const rankingResultIdx = headers.indexOf('撕榜結果');
 
-    if (studentIdIdx === -1 || vol1Idx === -1) {
-      return { code: 500, data: null, message: '工作表缺少「學號」或「志願1」欄位' };
+    if (studentIdIdx === -1 || vol1Idx === -1 || rankingResultIdx === -1) {
+      return { code: 500, data: null, message: '工作表缺少必要欄位（學號 / 撕榜結果 / 志願1）' };
     }
 
     // 搜尋該學生所在列
@@ -199,6 +201,44 @@ function savePostRankingPreferences(studentId, preferencesArray) {
 
     if (targetRowIdx === -1) {
       return { code: 404, data: null, message: '找不到學號 ' + studentId + ' 的資料列' };
+    }
+
+    const rankingResult = String(data[targetRowIdx][rankingResultIdx] || '').trim();
+    if (!rankingResult) {
+      return { code: 400, data: null, message: '尚未完成撕榜，無法儲存志願' };
+    }
+
+    const rankingKey = rankingResult.replace(/-$/, '');
+    const rankingParts = rankingKey.split('-');
+    if (rankingParts.length < 2) {
+      return { code: 500, data: null, message: '撕榜結果格式錯誤，無法判定志願上限' };
+    }
+
+    const schoolCode = String(parseInt(rankingParts[0], 10));
+    const groupCode = String(parseInt(rankingParts[1], 10));
+    if (schoolCode === 'NaN' || groupCode === 'NaN') {
+      return { code: 500, data: null, message: '撕榜結果代碼無效，無法判定志願上限' };
+    }
+
+    const departments = loadDepartmentStandards();
+    const matchedDept = departments.find((dept) => {
+      const deptSchoolCode = String(parseInt(dept['學校代碼'], 10));
+      const deptGroupCode = String(parseInt(dept['學群類別代碼'], 10));
+      return deptSchoolCode === schoolCode && deptGroupCode === groupCode;
+    });
+
+    if (!matchedDept) {
+      return { code: 500, data: null, message: '找不到對應學群的校系分則，無法判定志願上限' };
+    }
+
+    const quota = parseInt(matchedDept['招生名額可填志願數'], 10);
+    if (isNaN(quota) || quota < 0) {
+      return { code: 500, data: null, message: '校系分則「招生名額可填志願數」設定無效' };
+    }
+
+    const dynamicLimit = Math.min(quota, 50);
+    if (preferencesArray.length > dynamicLimit) {
+      return { code: 400, data: null, message: '志願數量不得超過 ' + dynamicLimit + ' 個' };
     }
 
     // Bug fix #3：建立固定長度 50 的陣列，不足補空字串，確保覆蓋舊資料

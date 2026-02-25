@@ -10,10 +10,10 @@
       class="time-alert"
     />
 
-    <!-- 撕榜結果資訊列 / 尚未撕榜提示 -->
+    <!-- 填榜結果資訊列 / 尚未填榜提示 -->
     <el-alert
       v-if="!rankingResult"
-      title="您尚未完成撕榜，目前無法選填志願"
+      title="您尚未完成填榜，目前無法選填志願"
       type="info"
       :closable="false"
       show-icon
@@ -21,7 +21,7 @@
     />
     <el-alert
       v-else
-      :title="`您的撕榜結果為：${rankingName}`"
+      :title="`您的填榜結果為：${rankingName}`"
       type="success"
       :closable="false"
       show-icon
@@ -31,7 +31,7 @@
     <el-card class="main-card">
       <template #header>
         <div class="card-header">
-          <span class="title">我的撕榜後志願</span>
+          <span class="title">我的填榜後志願</span>
           <span class="count">
             <el-tag :type="postRankingList.length >= maxPostRankingLimit ? 'danger' : 'info'">
               {{ postRankingList.length }} / {{ maxPostRankingLimit }} 個志願
@@ -48,8 +48,7 @@
         </div>
         <ol class="info-hint__list">
           <li>科系新增、刪除、或變更志願序之後請記得存檔。</li>
-          <li>存檔完成之後，才能匯出PDF志願表。</li>
-          <li>非志願選填時段系統會呈現唯讀，無法變更或匯出。</li>
+          <li>非志願選填時段系統會呈現唯讀，無法變更志願。</li>
         </ol>
       </div>
 

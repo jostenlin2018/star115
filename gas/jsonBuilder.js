@@ -76,6 +76,7 @@ function buildStudentDataJSON(studentId, referenceData) {
             學校簡稱: dept['學校簡稱'] || '',
             學群類別: groupCategory,
             學群類別代碼: groupCode,
+            招生名額可填志願數: parseInt(dept['招生名額可填志願數']) || 0,
             可選填科系: []
           };
         }
